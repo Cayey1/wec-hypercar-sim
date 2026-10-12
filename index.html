@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>WEC Hypercar Simulator - Spa-Francorchamps</title>
+  
+  <!-- Three.js y OrbitControls / SimplexNoise via CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <style>
+    :root {
+      --hud-blue: #0ea5e9;
+      --hud-dark: rgba(15, 23, 42, 0.78);
+      --hud-border: rgba(255, 255, 255, 0.2);
+      --led-green: #22c55e;
+      --led-yellow: #eab308;
+      --led-red: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #050508;
+    }
+
+    #gameCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 1;
+    }
+
+    /* Contenedor HUD */
+    #hudLayer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px;
+    }
+
+    /* Logo WEC superior izquierdo */
+    .wec-logo {
+      position: absolute;
+      top: 14px;
+      left: 18px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #38bdf8;
+      font-size: 1.25rem;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+      font-style: italic;
+    }
+    .wec-sub {
+      font-size: 0.55rem;
+      color: rgba(255, 255, 255, 0.7);
+      letter-spacing: 0.5px;
+      display: block;
+      font-style: normal;
+    }
+
+    /* Barra Superior Central (Telemetría de Viento y Carga) */
+    .top-telemetry-bar {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--hud-border);
+      border-radius: 6px;
+      padding: 6px 18px;
+      color: #e2e8f0;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      display: flex;
+      gap: 14px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    }
+    .top-telemetry-bar span {
+      color: #94a3b8;
+    }
+    .top-telemetry-bar strong {
+      color: #38bdf8;
+    }
+
+    /* Retrovisor Superior Derecho */
+    .mirror-box {
+      position: absolute;
+      top: 14px;
+      right: 18px;
+      width: 240px;
+      height: 95px;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      border-radius: 4px;
+      overflow: hidden;
+      background: #000;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
+    }
+    #mirrorCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      transform: scaleX(-1); /* Efecto espejo */
+    }
+    .mirror-label {
+      position: absolute;
+      bottom: 2px;
+      left: 6px;
+      font-size: 0.65rem;
+      font-weight: 800;
+      color: rgba(255, 255, 255, 0.85);
+      background: rgba(0, 0, 0, 0.6);
+      padding: 1px 6px;
+      border-radius: 2px;
+      letter-spacing: 0.5px;
+    }
+
+    /* Tabla de Clasificación Lateral Izquierda (Leaderboard) */
+    .leaderboard-panel {
+      position: absolute;
+      top: 90px;
+      left: 18px;
+      width: 215px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--hud-border);
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+      color: #fff;
+    }
+    .leaderboard-header {
+      background: rgba(30, 41, 59, 0.95);
+      padding: 6px 10px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--hud-border);
+      color: #93c5fd;
+    }
+    .leaderboard-subhead {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 10px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: #64748b;
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .leaderboard-list {
+      list-style: none;
+      font-size: 0.68rem;
+    }
+    .leaderboard-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .leaderboard-item.player-row {
+      background: rgba(14, 165, 233, 0.3);
+      font-weight: 800;
+      border-left: 3px solid #38bdf8;
+    }
+    .driver-tag {
+      font-weight: 700;
+    }
+    .driver-gap {
+      color: #38bdf8;
+      font-family: monospace;
+    }
+    .driver-fuel {
+      color: #94a3b8;
+    }
+
+    /* Minimapa Inferior Izquierdo */
+    .minimap-container {
+      position: absolute;
+      bottom: 24px;
+      left: 20px;
+      width: 170px;
+      height: 190px;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 8px;
+    }
+    #minimapCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Etiqueta de Curva Central Inferior */
+    .turn-indicator {
+      position: absolute;
+      bottom: 25px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--hud-border);
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      padding: 6px 20px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Tacómetro y Dashboard Digital Inferior Derecho */
+    .telemetry-dashboard {
+      position: absolute;
+      bottom: 18px;
+      right: 18px;
+      width: 250px;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--hud-border);
+      border-radius: 8px;
+      padding: 12px;
+      color: #fff;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+    }
+
+    /* Velocidad y Marcha */
+    .speed-gear-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+      padding-bottom: 8px;
+      margin-bottom: 8px;
+    }
+    .gear-display {
+      font-size: 3rem;
+      font-weight: 900;
+      line-height: 1;
+      color: #fff;
+      font-family: monospace;
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    }
+    .speed-display {
+      text-align: right;
+    }
+    .speed-number {
+      font-size: 2.2rem;
+      font-weight: 900;
+      line-height: 1;
+      color: #38bdf8;
+      font-family: monospace;
+    }
+    .speed-unit {
+      font-size: 0.7rem;
+      color: #94a3b8;
+      font-weight: 700;
+    }
+
+    /* Luces LED de RPM */
+    .rpm-led-bar {
+      display: flex;
+      gap: 4px;
+      justify-content: flex-end;
+      margin-top: 4px;
+    }
+    .rpm-led {
+      width: 10px;
+      height: 8px;
+      border-radius: 2px;
+      background: #1e293b;
+      transition: background 0.05s ease;
+    }
+    .rpm-led.green.active { background: var(--led-green); box-shadow: 0 0 8px var(--led-green); }
+    .rpm-led.yellow.active { background: var(--led-yellow); box-shadow: 0 0 8px var(--led-yellow); }
+    .rpm-led.red.active { background: var(--led-red); box-shadow: 0 0 10px var(--led-red); }
+
+    /* Combustible y Fiabilidad */
+    .stats-subrow {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.68rem;
+      color: #cbd5e1;
+      margin-bottom: 4px;
+    }
+    .bar-meter {
+      height: 4px;
+      background: #1e293b;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 2px;
+      margin-bottom: 6px;
+    }
+    .bar-fill {
+      height: 100%;
+      background: #38bdf8;
+      width: 85%;
+    }
+
+    /* Vuelta, Tiempos y Posición */
+    .lap-position-box {
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 8px;
+      margin-top: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .lap-info {
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .lap-current {
+      font-size: 0.95rem;
+      color: #38bdf8;
+      font-family: monospace;
+      font-weight: 800;
+    }
+    .pos-info {
+      text-align: right;
+    }
+    .pos-label {
+      font-size: 0.62rem;
+      color: #94a3b8;
+    }
+    .pos-number {
+      font-size: 1.35rem;
+      font-weight: 900;
+      color: #fff;
+    }
+
+    /* Gráfico de Neumáticos */
+    .tyres-container {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .tyre-item {
+      width: 22px;
+      height: 28px;
+      border-radius: 4px;
+      background: rgba(34, 197, 94, 0.25);
+      border: 1.5px solid #22c55e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.58rem;
+      font-weight: 800;
+      color: #86efac;
+    }
+
+    /* FPS Counter */
+    .fps-counter {
+      position: absolute;
+      bottom: 8px;
+      left: 18px;
+      font-size: 0.65rem;
+      color: #ef4444;
+      font-family: monospace;
+      font-weight: 700;
+    }
+
+    /* Controles Táctiles para Móvil */
+    .mobile-controls {
+      display: none;
+      position: absolute;
+      bottom: 20px;
+      left: 0;
+      width: 100%;
+      height: 140px;
+      pointer-events: none;
+      z-index: 50;
+      padding: 0 20px;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .touch-btn {
+      pointer-events: auto;
+      width: 65px;
+      height: 65px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(8px);
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.3rem;
+      font-weight: 900;
+    }
+    .touch-btn:active {
+      background: rgba(56, 189, 248, 0.6);
+      transform: scale(0.92);
+    }
+
+    /* Ayuda / Controles Overlay */
+    #controlsHelp {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(15, 23, 42, 0.95);
+      border: 2px solid #38bdf8;
+      border-radius: 12px;
+      padding: 24px 30px;
+      color: white;
+      text-align: center;
+      z-index: 100;
+      pointer-events: auto;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+      max-width: 480px;
+      width: 90%;
+    }
+    #controlsHelp h2 {
+      font-size: 1.5rem;
+      color: #38bdf8;
+      margin-bottom: 12px;
+      font-weight: 900;
+    }
+    .help-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      text-align: left;
+      font-size: 0.85rem;
+      margin: 16px 0;
+    }
+    .help-grid kbd {
+      background: #334155;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-weight: 700;
+      border: 1px solid #64748b;
+    }
+    .btn-start {
+      background: #0284c7;
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(2, 132, 199, 0.5);
+      transition: all 0.2s;
+    }
+    .btn-start:hover {
+      background: #0ea5e9;
+      transform: scale(1.05);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .mobile-controls {
+        display: flex;
+      }
+      .leaderboard-panel {
+        display: none;
+      }
+      .mirror-box {
+        width: 140px;
+        height: 60px;
+      }
+      .top-telemetry-bar {
+        font-size: 0.65rem;
+        padding: 4px 10px;
+      }
+      .telemetry-dashboard {
+        width: 180px;
+        padding: 8px;
+      }
+      .gear-display {
+        font-size: 2.2rem;
+      }
+      .speed-number {
+        font-size: 1.6rem;
+      }
+      .minimap-container {
+        width: 110px;
+        height: 120px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Lienzo principal 3D WebGL -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Capa HUD Profesional WEC -->
+  <div id="hudLayer">
+    
+    <!-- Logo WEC -->
+    <div class="wec-logo">
+      WEC
+      <div>
+        <span class="wec-sub">FIA WORLD ENDURANCE CHAMPIONSHIP</span>
+      </div>
+    </div>
+
+    <!-- Barra Superior de Telemetría -->
+    <div class="top-telemetry-bar">
+      <div>VIENTO <strong id="valWind">9.8 m/s</strong> <span>(cola)</span></div>
+      <div>CARGA <strong id="valDownforce">5.1 kN</strong></div>
+      <div>AGARRE <strong id="valGrip">2.1 g</strong></div>
+      <div>SUELO <strong style="color:#22c55e;">OK</strong></div>
+      <div>ρ <strong>1.168</strong></div>
+    </div>
+
+    <!-- Retrovisor en Vivo Superior Derecho -->
+    <div class="mirror-box">
+      <canvas id="mirrorCanvas"></canvas>
+      <div class="mirror-label">RETROVISOR - P</div>
+    </div>
+
+    <!-- Leaderboard Lateral Izquierdo -->
+    <div class="leaderboard-panel">
+      <div class="leaderboard-header">
+        <span>TOP 11-20</span>
+        <span style="font-size:0.6rem; color:#64748b;">HYPERCAR</span>
+      </div>
+      <div class="leaderboard-subhead">
+        <span>COCHE</span>
+        <span>GAP</span>
+        <span>COMB</span>
+        <span>FIAB</span>
+      </div>
+      <ul class="leaderboard-list" id="leaderboardList">
+        <!-- Generado dinámicamente -->
+      </ul>
+    </div>
+
+    <!-- Minimapa Inferior Izquierdo -->
+    <div class="minimap-container">
+      <canvas id="minimapCanvas" width="170" height="190"></canvas>
+    </div>
+
+    <!-- Indicador de Curva Central -->
+    <div class="turn-indicator" id="turnIndicator">LA SOURCE</div>
+
+    <!-- Dashboard y Tacómetro Inferior Derecho -->
+    <div class="telemetry-dashboard">
+      <div class="speed-gear-row">
+        <div class="gear-display" id="gearDisplay">6</div>
+        <div class="speed-display">
+          <div>
+            <span class="speed-number" id="speedDisplay">250</span>
+            <span class="speed-unit">km/h</span>
+          </div>
+          <!-- Barra LED de RPM -->
+          <div class="rpm-led-bar" id="rpmBar">
+            <div class="rpm-led green"></div>
+            <div class="rpm-led green"></div>
+            <div class="rpm-led green"></div>
+            <div class="rpm-led yellow"></div>
+            <div class="rpm-led yellow"></div>
+            <div class="rpm-led red"></div>
+            <div class="rpm-led red"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-subrow">
+        <span>COMB. <strong id="fuelVal">89 L</strong></span>
+        <span>PESO <strong>1030 kg</strong></span>
+      </div>
+      <div class="bar-meter">
+        <div class="bar-fill" id="fuelBar" style="width: 89%;"></div>
+      </div>
+
+      <div class="stats-subrow">
+        <span>FIABILIDAD MOTOR: <strong>97%</strong></span>
+        <span>CAJA: <strong>94%</strong></span>
+      </div>
+
+      <div class="lap-position-box">
+        <div class="lap-info">
+          <div>VUELTA <span id="lapCount">1</span> / 3</div>
+          <div class="lap-current" id="lapTime">0:43.350</div>
+          <div style="font-size: 0.6rem; color:#94a3b8;">MÁX <span id="maxSpeed">271</span> km/h</div>
+        </div>
+        <div class="pos-info">
+          <div class="pos-label">POSICIÓN</div>
+          <div class="pos-number"><span id="playerPos">22</span> <span style="font-size:0.8rem; color:#64748b;">/ 26</span></div>
+        </div>
+      </div>
+
+      <!-- Neumáticos -->
+      <div class="tyres-container">
+        <div class="tyre-item" id="tyreFL"><span>FL</span>86°</div>
+        <div class="tyre-item" id="tyreFR"><span>FR</span>87°</div>
+        <div class="tyre-item" id="tyreRL"><span>RL</span>96°</div>
+        <div class="tyre-item" id="tyreRR"><span>RR</span>98°</div>
+      </div>
+    </div>
+
+    <!-- FPS -->
+    <div class="fps-counter" id="fpsCounter">34 FPS · 29.4 ms · res 1.0x</div>
+
+    <!-- Controles Táctiles en Pantalla para Móvil -->
+    <div class="mobile-controls">
+      <div style="display: flex; gap: 12px;">
+        <button class="touch-btn" id="btnTouchLeft">◀</button>
+        <button class="touch-btn" id="btnTouchRight">▶</button>
+      </div>
+      <div style="display: flex; gap: 12px;">
+        <button class="touch-btn" id="btnTouchBrake" style="background: rgba(239, 68, 68, 0.4);">🛑</button>
+        <button class="touch-btn" id="btnTouchGas" style="background: rgba(34, 197, 94, 0.4);">⚡</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Pantalla de Inicio / Instrucciones -->
+  <div id="controlsHelp">
+    <h2>🏁 WEC SPA-FRANCORCHAMPS</h2>
+    <p style="font-size:0.9rem; color:#94a3b8;">Simulador Hypercar 3D en Navegador</p>
+    
+    <div class="help-grid">
+      <div><kbd>W</kbd> o <kbd>▲</kbd> Acelerar</div>
+      <div><kbd>S</kbd> o <kbd>▼</kbd> Frenar / Reversa</div>
+      <div><kbd>A</kbd> <kbd>D</kbd> o <kbd>◀</kbd> <kbd>▶</kbd> Girar</div>
+      <div><kbd>Espacio</kbd> Freno de Mano</div>
+      <div><kbd>Shift</kbd> Híbrido Boost (ERS)</div>
+      <div><kbd>C</kbd> Cambiar Cámara</div>
+      <div><kbd>R</kbd> Reiniciar al circuito</div>
+      <div><kbd>M</kbd> Silenciar Motor</div>
+    </div>
+
+    <button class="btn-start" id="btnStartGame">INICIAR CARRERA</button>
+  </div>
+
+  <!-- Script del Juego -->
+  <script src="game.js"></script>
+</body>
+</html>
