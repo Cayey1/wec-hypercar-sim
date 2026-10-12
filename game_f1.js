@@ -416,6 +416,7 @@ function init() {
 
   createPlayerCar();
   createOpponentCars();
+  loadF1CarModel();
 
   setupBrakeBoards();
   setupSpeedBlurEffect();
@@ -659,6 +660,9 @@ function createEnvironment() {
 
   createDetailedGrandstand(new THREE.Vector3(-25, 8, -50), 0.1, 140, 18);
   createDetailedGrandstand(new THREE.Vector3(15, 25, 450), -0.38, 95, 22);
+  // Tribuna y torre de comisarios de Eau Rouge (como en la foto de referencia)
+  createDetailedGrandstand(new THREE.Vector3(22, 2, 300), -0.22, 110, 20);
+  createMarshalTower(new THREE.Vector3(86, -22, 220));
 
   createMarshalTower(new THREE.Vector3(45, 0, -210));
   createMarshalTower(new THREE.Vector3(88, 46, 560));
@@ -886,6 +890,9 @@ function buildHypercarModel(primaryColor = 0xdc2626, isPlayer = false) {
   return carRoot;
 }
 
+let currentVehicleType = "F1";
+let f1ModelTemplate = null;
+
 function createPlayerCar() {
   playerCar = buildHypercarModel(0xdc2626, true);
   playerCarVisuals = playerCar.visuals;
@@ -903,6 +910,7 @@ function createOpponentCars() {
       name: data.name,
       team: data.team,
       num: data.num,
+      colorHex: data.color,
       posDistance: data.offsetT,
       lateralOffset: data.lat,
       speed: 68 + Math.random() * 12,
@@ -913,6 +921,164 @@ function createOpponentCars() {
     opponents.push(opp);
     updateCarTransform(opp.mesh, opp.posDistance, opp.lateralOffset);
   });
+}
+
+// --- CARGA DEL MODELO 3D DE F1 DE ALTA FIDELIDAD CON ORIENTACIÓN CORREGIDA ---
+function loadF1CarModel() {
+  if (typeof THREE.GLTFLoader === "undefined") {
+    console.warn("THREE.GLTFLoader no disponible en este momento.");
+    return;
+  }
+
+  const loader = new THREE.GLTFLoader();
+  loader.load("f1.glb", (gltf) => {
+    const rawModel = gltf.scene;
+
+    // 1. Centrado Dinámico con Bounding Box
+    const box = new THREE.Box3().setFromObject(rawModel);
+    const center = box.getCenter(new THREE.Vector3());
+    rawModel.position.set(-center.x, -box.min.y, -center.z);
+
+    // 2. Orientación Matemática Garantizada:
+    // En f1.glb original, el morro apunta a +Z y el alerón a -Z.
+    // En Three.js la tangente de avance mira hacia -Z.
+    // Al rotar Math.PI (180°), el MORRO apunta hacia -Z (HACIA ADELANTE)
+    // y la TRASERA hacia +Z (HACIA LA CÁMARA).
+    const orientationGroup = new THREE.Group();
+    orientationGroup.rotation.y = Math.PI;
+    orientationGroup.add(rawModel);
+
+    // 3. Ajuste de Materiales PBR
+    rawModel.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        if (child.material) {
+          child.material.envMapIntensity = 2.0;
+          const matName = (child.material.name || "").toLowerCase();
+          if (matName.includes("tyre")) {
+            child.material.roughness = 0.82;
+            child.material.metalness = 0.05;
+            child.material.color.setHex(0x18181b);
+          } else if (matName.includes("halo") || matName.includes("underbody")) {
+            child.material.roughness = 0.35;
+            child.material.metalness = 0.85;
+            child.material.color.setHex(0x0f1115);
+          } else if (matName.includes("body") || matName.includes("nose") || matName.includes("wing") || matName.includes("side")) {
+            child.material.roughness = 0.12;
+            child.material.metalness = 0.72;
+          }
+        }
+      }
+    });
+
+    // 4. Luz de Lluvia Trasera Estroboscópica FIA de F1 (+Z)
+    const rainLightMat = new THREE.MeshBasicMaterial({ color: 0xff0022 });
+    const f1RainLight = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.12, 0.08), rainLightMat);
+    f1RainLight.position.set(0, 0.36, 2.25);
+    orientationGroup.add(f1RainLight);
+
+    // Llama de escape de deceleración (+Z)
+    const flameMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.0 });
+    const flame = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), flameMat);
+    flame.position.set(0, 0.52, 2.28);
+    orientationGroup.add(flame);
+
+    f1ModelTemplate = orientationGroup;
+
+    // Aplicar a jugador y rivales
+    applyF1ModelToCar(playerCar, 0xef1111, true, 22);
+    opponents.forEach((opp) => {
+      applyF1ModelToCar(opp.mesh, opp.colorHex || 0xdc2626, false, opp.num);
+    });
+
+    showVehicleNotification("🏎️ MODELO F1 2022 3D CARGADO (Orientación al Frente)");
+    console.log("F1 3D model loaded and oriented forward successfully!");
+  }, undefined, (err) => {
+    console.error("Error al cargar f1.glb:", err);
+  });
+}
+
+function applyF1ModelToCar(carRoot, colorHex, isPlayer, num) {
+  if (!f1ModelTemplate || !carRoot || !carRoot.visuals) return;
+
+  const instance = f1ModelTemplate.clone(true);
+  instance.traverse((child) => {
+    if (child.isMesh && child.material) {
+      child.material = child.material.clone();
+      const matName = (child.material.name || "").toLowerCase();
+      if (matName.includes("body") || matName.includes("nose") || matName.includes("wing") || matName.includes("side")) {
+        child.material.color.setHex(colorHex);
+      }
+    }
+  });
+
+  const rainLight = instance.children.find(c => c.isMesh && c.geometry.type === "BoxGeometry" && c.position.z > 2.0);
+  const flame = instance.children.find(c => c.isMesh && c.geometry.type === "SphereGeometry" && c.position.z > 2.0);
+  carRoot.f1RainLight = rainLight;
+  carRoot.flame = flame;
+
+  carRoot.visuals.clear();
+  carRoot.visuals.add(instance);
+}
+
+function applyHypercarModelToCar(carRoot, colorHex, isPlayer) {
+  if (!carRoot || !carRoot.visuals) return;
+  const hyperModel = buildHypercarModel(colorHex, isPlayer);
+  carRoot.visuals.clear();
+  while (hyperModel.visuals.children.length > 0) {
+    carRoot.visuals.add(hyperModel.visuals.children[0]);
+  }
+  carRoot.f1RainLight = hyperModel.f1RainLight;
+  carRoot.flame = hyperModel.flame;
+  carRoot.rearLightMesh = hyperModel.rearLightMesh;
+}
+
+function toggleVehicleModel() {
+  currentVehicleType = (currentVehicleType === "F1") ? "HYPERCAR" : "F1";
+  const btn = document.getElementById("btnVehicleToggle");
+
+  if (currentVehicleType === "F1" && f1ModelTemplate) {
+    applyF1ModelToCar(playerCar, 0xef1111, true, 22);
+    opponents.forEach(opp => applyF1ModelToCar(opp.mesh, opp.colorHex || 0xdc2626, false, opp.num));
+    if (btn) btn.textContent = "🏎️ FÓRMULA 1 (3D REAL) [T]";
+    showVehicleNotification("🏎️ MODO FÓRMULA 1 (Modelo 3D Alta Fidelidad)");
+  } else {
+    applyHypercarModelToCar(playerCar, 0xdc2626, true);
+    opponents.forEach(opp => applyHypercarModelToCar(opp.mesh, opp.colorHex || 0xdc2626, false));
+    if (btn) btn.textContent = "🏁 WEC HYPERCAR [T]";
+    showVehicleNotification("🏁 MODO WEC HYPERCAR (Porsche Penske 963)");
+  }
+}
+
+function showVehicleNotification(text) {
+  let toast = document.getElementById("vehicleToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "vehicleToast";
+    toast.style.position = "absolute";
+    toast.style.top = "65px";
+    toast.style.left = "50%";
+    toast.style.transform = "translateX(-50%)";
+    toast.style.background = "rgba(15, 23, 42, 0.92)";
+    toast.style.border = "1px solid rgba(14, 165, 233, 0.8)";
+    toast.style.color = "#ffffff";
+    toast.style.padding = "10px 24px";
+    toast.style.borderRadius = "24px";
+    toast.style.fontSize = "0.92rem";
+    toast.style.fontWeight = "700";
+    toast.style.zIndex = "100";
+    toast.style.pointerEvents = "none";
+    toast.style.boxShadow = "0 8px 32px rgba(0,0,0,0.6)";
+    toast.style.transition = "opacity 0.3s ease";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = text;
+  toast.style.opacity = "1";
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => {
+    toast.style.opacity = "0";
+  }, 3200);
 }
 
 // --- TRANSFORMACIÓN Y ORIENTACIÓN MATEMÁTICAMENTE CORREGIDA ---
@@ -1077,11 +1243,11 @@ function updateCameras() {
   const up = new THREE.Vector3(0, 1, 0);
 
   if (carState.cameraMode === 0) {
-    // Cámara de Persecución trasera (Chase Cam)
-    const camOffset = forward.clone().multiplyScalar(-8.4).add(up.clone().multiplyScalar(3.3));
+    // Cámara de Persecución trasera (Chase Cam) idéntica a la foto de referencia
+    const camOffset = forward.clone().multiplyScalar(-6.4).add(up.clone().multiplyScalar(2.1));
     const targetPos = carPos.clone().add(camOffset);
-    camera.position.lerp(targetPos, 0.24);
-    camera.lookAt(carPos.clone().add(up.clone().multiplyScalar(1.25)));
+    camera.position.lerp(targetPos, 0.28);
+    camera.lookAt(carPos.clone().add(forward.clone().multiplyScalar(5.0)).add(up.clone().multiplyScalar(1.1)));
   } else if (carState.cameraMode === 1) {
     // Cámara de Capó (Hood Cam)
     const hoodOffset = forward.clone().multiplyScalar(0.4).add(up.clone().multiplyScalar(1.1));
@@ -1344,6 +1510,9 @@ function setupEventListeners() {
       case "KeyC":
         carState.cameraMode = (carState.cameraMode + 1) % 3;
         break;
+      case "KeyT":
+        toggleVehicleModel();
+        break;
       case "KeyR":
         carState.speed = 0;
         carState.lateralOffset = 0;
@@ -1397,6 +1566,13 @@ function setupEventListeners() {
     initAudio();
     document.getElementById("controlsHelp").style.display = "none";
   });
+
+  const btnVehicle = document.getElementById("btnVehicleToggle");
+  if (btnVehicle) {
+    btnVehicle.addEventListener("click", () => {
+      toggleVehicleModel();
+    });
+  }
 
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;

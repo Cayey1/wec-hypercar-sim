@@ -10,6 +10,8 @@
   
   <!-- Three.js r128 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Three.js GLTF 3D Model Loader -->
+  <script src="GLTFLoader.js"></script>
 
   <style>
     :root {
@@ -481,6 +483,12 @@
       </div>
     </div>
 
+    <div style="position: absolute; top: 12px; left: 160px; pointer-events: auto; z-index: 50;">
+      <button id="btnVehicleToggle" style="background: rgba(15, 23, 42, 0.88); border: 1px solid rgba(14, 165, 233, 0.6); color: #38bdf8; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 0.75rem; cursor: pointer; transition: all 0.2s ease; letter-spacing: 0.5px;">
+        🏎️ FÓRMULA 1 (3D REAL) [T]
+      </button>
+    </div>
+
     <div class="top-telemetry-bar">
       <div>VIENTO <strong id="valWind">9.8 m/s</strong> <span>(cola)</span></div>
       <div>CARGA <strong id="valDownforce">5.1 kN</strong></div>
@@ -592,6 +600,7 @@
       <div><kbd>Espacio</kbd> Freno de Mano</div>
       <div><kbd>Shift</kbd> Híbrido Boost (ERS)</div>
       <div><kbd>C</kbd> Cambiar Cámara</div>
+      <div><kbd>T</kbd> Cambiar Vehículo (F1 / Hypercar)</div>
       <div><kbd>R</kbd> Reiniciar coche</div>
       <div><kbd>M</kbd> Silenciar Motor</div>
     </div>
@@ -599,7 +608,7 @@
     <button class="btn-start" id="btnStartGame">INICIAR CARRERA</button>
   </div>
 
-  <!-- Carga del Motor de F1 y WEC Actualizado (Evita caché anterior) -->
-  <script src="game_f1.js?v=F1_EDITION"></script>
+  <!-- Carga del Motor de F1 y WEC Actualizado con Modelo 3D Real -->
+  <script src="game_f1.js?v=F1_GLTF_2026_PC"></script>
 </body>
 </html>

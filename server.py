@@ -35,7 +35,11 @@ def main():
     except Exception:
         pass
 
-    with socketserver.TCPServer(("", PORT), CustomHTTPHandler) as httpd:
+    class ThreadedServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+        daemon_threads = True
+        allow_reuse_address = True
+
+    with ThreadedServer(("", PORT), CustomHTTPHandler) as httpd:
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
