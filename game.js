@@ -635,6 +635,7 @@ function init() {
   loadF1CarModel();
 
   setupBrakeBoards();
+  initSparkSystem();
   setupSpeedBlurEffect();
   setupEventListeners();
 
@@ -1540,6 +1541,48 @@ function updatePhysics(dt) {
     carState.fuel = Math.max(1.0, carState.fuel - 0.004 * dt);
   }
 
+  // Detección de Rebufo / Slipstream (detrás de un rival a menos de 35 metros)
+  let inSlipstream = false;
+  const playerNorm = ((carState.posDistance % 1.0) + 1.0) % 1.0;
+
+  for (const opp of opponents) {
+    const oppNorm = ((opp.posDistance % 1.0) + 1.0) % 1.0;
+    let distDiff = (oppNorm - playerNorm);
+    if (distDiff < 0) distDiff += 1.0;
+
+    const meterDist = distDiff * trackLength;
+    if (meterDist > 3 && meterDist < 35 && Math.abs(carState.lateralOffset - opp.lateralOffset) < 2.8) {
+      inSlipstream = true;
+      break;
+    }
+  }
+
+  const badge = document.getElementById("slipstreamBadge");
+  if (inSlipstream && carState.speed > 45) {
+    carState.speed += 7.5 * dt; // Succión aerodinámica de rebufo
+    if (badge) badge.style.display = "block";
+  } else {
+    if (badge) badge.style.display = "none";
+  }
+
+  // Simulación de temperatura de neumáticos (°C)
+  const baseT = 85 + (carState.speed / 95) * 12;
+  const brakeStress = keys.backward ? 8 : 0;
+  const tempFL = Math.round(baseT + (keys.right ? 6 : 0) + brakeStress);
+  const tempFR = Math.round(baseT + (keys.left ? 7 : 0) + brakeStress);
+  const tempRL = Math.round(baseT + 8 + (keys.forward ? 4 : 0));
+  const tempRR = Math.round(baseT + 9 + (keys.forward ? 4 : 0));
+
+  const elFL = document.getElementById("tyreFL");
+  const elFR = document.getElementById("tyreFR");
+  const elRL = document.getElementById("tyreRL");
+  const elRR = document.getElementById("tyreRR");
+  if (elFL) elFL.innerHTML = `<span>FL</span>${tempFL}°`;
+  if (elFR) elFR.innerHTML = `<span>FR</span>${tempFR}°`;
+  if (elRL) elRL.innerHTML = `<span>RL</span>${tempRL}°`;
+  if (elRR) elRR.innerHTML = `<span>RR</span>${tempRR}°`;
+
+  updateSparks(dt);
   updateAudio();
 }
 
@@ -1570,8 +1613,15 @@ function updateCameras() {
   const up = new THREE.Vector3(0, 1, 0);
 
   if (carState.cameraMode === 0) {
-    // Cámara de Persecución trasera (Chase Cam) idéntica a la foto de referencia
-    const camOffset = forward.clone().multiplyScalar(-6.4).add(up.clone().multiplyScalar(2.1));
+    // Cámara de Persecución con Inercia G-Force dinámica (Aceleración/Frenada/Giro)
+    const accelPitch = (keys.forward ? -0.32 : (keys.backward ? 0.42 : 0.0));
+    const steerRoll = (keys.left ? 0.38 : (keys.right ? -0.38 : 0.0));
+    const speedShake = carState.speed > 66 ? (Math.random() - 0.5) * 0.038 : 0.0;
+
+    const camOffset = forward.clone().multiplyScalar(-6.4 + accelPitch)
+      .add(up.clone().multiplyScalar(2.1 + speedShake))
+      .add(new THREE.Vector3().crossVectors(forward, up).multiplyScalar(steerRoll));
+
     const targetPos = carPos.clone().add(camOffset);
     camera.position.lerp(targetPos, 0.28);
     camera.lookAt(carPos.clone().add(forward.clone().multiplyScalar(5.0)).add(up.clone().multiplyScalar(1.1)));
@@ -1592,6 +1642,74 @@ function updateCameras() {
   mirrorCamera.position.copy(mirrorPos);
   const lookBack = carPos.clone().add(forward.clone().multiplyScalar(-60)).add(up.clone().multiplyScalar(1.0));
   mirrorCamera.lookAt(lookBack);
+}
+
+// --- Sistema de Chispas de Titanio en la Compresión de Eau Rouge ---
+let sparkParticles, sparkGeom, sparkVelocities = [];
+
+function initSparkSystem() {
+  const count = 120;
+  sparkGeom = new THREE.BufferGeometry();
+  const sparkPositions = new Float32Array(count * 3);
+  sparkVelocities = [];
+
+  for (let i = 0; i < count; i++) {
+    sparkPositions[i * 3] = 0;
+    sparkPositions[i * 3 + 1] = -100;
+    sparkPositions[i * 3 + 2] = 0;
+    sparkVelocities.push({ vx: 0, vy: 0, vz: 0, life: 0 });
+  }
+
+  sparkGeom.setAttribute("position", new THREE.BufferAttribute(sparkPositions, 3));
+
+  const sparkMat = new THREE.PointsMaterial({
+    color: 0xffaa22,
+    size: 0.28,
+    transparent: true,
+    opacity: 0.92,
+    blending: THREE.AdditiveBlending
+  });
+
+  sparkParticles = new THREE.Points(sparkGeom, sparkMat);
+  scene.add(sparkParticles);
+}
+
+function updateSparks(dt) {
+  if (!sparkParticles || !playerCar) return;
+
+  const norm = ((carState.posDistance % 1.0) + 1.0) % 1.0;
+  // En la compresión de Eau Rouge (0.222 a 0.260) a alta velocidad
+  const isEauRouge = (norm >= 0.22 && norm <= 0.265) && carState.speed > 52;
+  const carPos = playerCar.position;
+  const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(playerCar.quaternion).normalize();
+
+  const count = sparkVelocities.length;
+  const posAttr = sparkGeom.attributes.position;
+
+  for (let i = 0; i < count; i++) {
+    const v = sparkVelocities[i];
+    if (v.life > 0) {
+      v.life -= dt * 2.8;
+      posAttr.array[i * 3] += v.vx * dt;
+      posAttr.array[i * 3 + 1] += v.vy * dt;
+      posAttr.array[i * 3 + 2] += v.vz * dt;
+      v.vy -= 9.8 * dt; // Gravedad
+      if (v.life <= 0) {
+        posAttr.array[i * 3 + 1] = -100;
+      }
+    } else if (isEauRouge && Math.random() > 0.45) {
+      // Emitir chispa desde el fondo plano del difusor
+      posAttr.array[i * 3] = carPos.x - forward.x * 1.6 + (Math.random() - 0.5) * 0.5;
+      posAttr.array[i * 3 + 1] = carPos.y + 0.05;
+      posAttr.array[i * 3 + 2] = carPos.z - forward.z * 1.6 + (Math.random() - 0.5) * 0.5;
+
+      v.vx = -forward.x * (carState.speed * 0.65) + (Math.random() - 0.5) * 8;
+      v.vy = 2.0 + Math.random() * 4.5;
+      v.vz = -forward.z * (carState.speed * 0.65) + (Math.random() - 0.5) * 8;
+      v.life = 0.35 + Math.random() * 0.45;
+    }
+  }
+  posAttr.needsUpdate = true;
 }
 
 // --- Desenfoque Radial de Velocidad ---
@@ -1623,52 +1741,201 @@ function updateSpeedBlur() {
   }
 }
 
-// --- Audio Sintetizado Web Audio API ---
+// --- Sintetizador de Motor de Competición V6 Turbo / V8 (Web Audio API Avanzado) ---
+let subOsc, subGain, mainOsc, mainGain, harmOsc, harmGain;
+let windGain = null;
+let lastGearShift = 6;
+
 function initAudio() {
   if (isAudioEnabled) return;
   try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     audioCtx = new AudioContext();
 
-    engineOsc = audioCtx.createOscillator();
-    engineOsc.type = "sawtooth";
-    engineGain = audioCtx.createGain();
-    engineGain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+    // 1. Sub-grave del motor (pulsos de combustión de baja frecuencia)
+    subOsc = audioCtx.createOscillator();
+    subOsc.type = "triangle";
+    subGain = audioCtx.createGain();
+    subGain.gain.setValueAtTime(0.09, audioCtx.currentTime);
+    subOsc.connect(subGain);
+    subGain.connect(audioCtx.destination);
+    subOsc.start();
 
-    const filter = audioCtx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(750, audioCtx.currentTime);
+    // 2. Motor principal (V6 Turbo / V8 Hypercar con filtro paso bajo dinámico)
+    mainOsc = audioCtx.createOscillator();
+    mainOsc.type = "sawtooth";
+    mainGain = audioCtx.createGain();
+    mainGain.gain.setValueAtTime(0.14, audioCtx.currentTime);
 
-    engineOsc.connect(filter);
-    filter.connect(engineGain);
-    engineGain.connect(audioCtx.destination);
-    engineOsc.start();
+    const mainFilter = audioCtx.createBiquadFilter();
+    mainFilter.type = "lowpass";
+    mainFilter.frequency.setValueAtTime(1400, audioCtx.currentTime);
+    mainFilter.Q.setValueAtTime(3.2, audioCtx.currentTime);
 
+    mainOsc.connect(mainFilter);
+    mainFilter.connect(mainGain);
+    mainGain.connect(audioCtx.destination);
+    mainOsc.start();
+
+    // 3. Armónico metálico de escape de competición
+    harmOsc = audioCtx.createOscillator();
+    harmOsc.type = "sawtooth";
+    harmGain = audioCtx.createGain();
+    harmGain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+    harmOsc.connect(harmGain);
+    harmGain.connect(audioCtx.destination);
+    harmOsc.start();
+
+    // 4. Silbido de Turbo
     turboOsc = audioCtx.createOscillator();
     turboOsc.type = "sine";
     turboGain = audioCtx.createGain();
     turboGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
-
     turboOsc.connect(turboGain);
     turboGain.connect(audioCtx.destination);
     turboOsc.start();
+
+    // 5. Ruido de viento aerodinámico a alta velocidad
+    const bufferSize = audioCtx.sampleRate * 2;
+    const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1;
+    }
+    const whiteNoise = audioCtx.createBufferSource();
+    whiteNoise.buffer = noiseBuffer;
+    whiteNoise.loop = true;
+
+    const windFilter = audioCtx.createBiquadFilter();
+    windFilter.type = "bandpass";
+    windFilter.frequency.setValueAtTime(650, audioCtx.currentTime);
+    windFilter.Q.setValueAtTime(1.2, audioCtx.currentTime);
+
+    windGain = audioCtx.createGain();
+    windGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+
+    whiteNoise.connect(windFilter);
+    windFilter.connect(windGain);
+    windGain.connect(audioCtx.destination);
+    whiteNoise.start();
 
     isAudioEnabled = true;
   } catch (e) {}
 }
 
+function playGearShiftPop() {
+  if (!isAudioEnabled || !audioCtx) return;
+  try {
+    const popOsc = audioCtx.createOscillator();
+    popOsc.type = "sawtooth";
+    const popGain = audioCtx.createGain();
+    popGain.gain.setValueAtTime(0.24, audioCtx.currentTime);
+    popGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+    popOsc.frequency.setValueAtTime(130, audioCtx.currentTime);
+    popOsc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.12);
+    popOsc.connect(popGain);
+    popGain.connect(audioCtx.destination);
+    popOsc.start();
+    popOsc.stop(audioCtx.currentTime + 0.14);
+  } catch(e) {}
+}
+
+function playLightBeep(freq = 440) {
+  if (!isAudioEnabled || !audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    osc.type = "sine";
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.16, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.2);
+  } catch(e) {}
+}
+
 function updateAudio() {
   if (!isAudioEnabled || !audioCtx) return;
 
-  const baseFreq = 55 + (carState.rpm / 9500) * 220;
-  engineOsc.frequency.setTargetAtTime(baseFreq, audioCtx.currentTime, 0.05);
+  const rpmNorm = (carState.rpm - 1500) / 9500;
+  const baseFreq = 48 + rpmNorm * 135;
 
-  const vol = Math.min(0.18, 0.04 + (carState.rpm / 9500) * 0.12);
-  engineGain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.05);
+  subOsc.frequency.setTargetAtTime(baseFreq * 0.5, audioCtx.currentTime, 0.04);
+  mainOsc.frequency.setTargetAtTime(baseFreq, audioCtx.currentTime, 0.04);
+  harmOsc.frequency.setTargetAtTime(baseFreq * 1.5, audioCtx.currentTime, 0.04);
 
-  const turboVol = keys.boost ? 0.08 : (keys.forward && carState.speed > 30 ? 0.03 : 0.0);
-  turboGain.gain.setTargetAtTime(turboVol, audioCtx.currentTime, 0.1);
-  turboOsc.frequency.setTargetAtTime(800 + (carState.speed * 20), audioCtx.currentTime, 0.1);
+  const throttle = keys.forward ? 1.0 : (keys.backward ? 0.3 : 0.08);
+  const mainVol = (0.04 + rpmNorm * 0.12) * (0.6 + throttle * 0.4);
+  mainGain.gain.setTargetAtTime(mainVol, audioCtx.currentTime, 0.04);
+  subGain.gain.setTargetAtTime(mainVol * 0.7, audioCtx.currentTime, 0.04);
+  harmGain.gain.setTargetAtTime(mainVol * 0.5, audioCtx.currentTime, 0.04);
+
+  // Turbo
+  const turboVol = keys.boost ? 0.12 : (keys.forward && carState.speed > 25 ? 0.04 * (carState.speed / 80) : 0.0);
+  turboGain.gain.setTargetAtTime(turboVol, audioCtx.currentTime, 0.08);
+  turboOsc.frequency.setTargetAtTime(900 + (carState.speed * 24), audioCtx.currentTime, 0.08);
+
+  // Viento
+  const speedKmh = carState.speed * 3.6;
+  const windVol = speedKmh > 120 ? Math.min(0.18, ((speedKmh - 120) / 220) * 0.18) : 0.0;
+  if (windGain) windGain.gain.setTargetAtTime(windVol, audioCtx.currentTime, 0.1);
+
+  // Petardeo de escape en cambio de marcha
+  if (carState.gear !== lastGearShift) {
+    playGearShiftPop();
+    lastGearShift = carState.gear;
+  }
+}
+
+// --- Secuencia de Semáforo de Salida FIA F1 (5 Luces Rojas) ---
+function startLightsSequence() {
+  const overlay = document.getElementById("startLightsOverlay");
+  if (!overlay) return;
+  overlay.style.display = "flex";
+
+  const lights = [
+    document.getElementById("sl1"),
+    document.getElementById("sl2"),
+    document.getElementById("sl3"),
+    document.getElementById("sl4"),
+    document.getElementById("sl5")
+  ];
+
+  lights.forEach(l => {
+    l.style.background = "#1e293b";
+    l.style.boxShadow = "none";
+  });
+
+  let step = 0;
+  const interval = setInterval(() => {
+    if (step < 5) {
+      lights[step].style.background = "#ef4444";
+      lights[step].style.boxShadow = "0 0 25px #ef4444";
+      playLightBeep(440);
+      step++;
+    } else {
+      clearInterval(interval);
+      setTimeout(() => {
+        lights.forEach(l => {
+          l.style.background = "#1e293b";
+          l.style.boxShadow = "none";
+        });
+        playLightBeep(880);
+        showVehicleNotification("🟢 ¡LIGHTS OUT AND AWAY WE GO!");
+        setTimeout(() => { overlay.style.display = "none"; }, 1200);
+      }, 1000 + Math.random() * 1500);
+    }
+  }, 900);
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen().catch(() => {});
+  }
 }
 
 // --- Actualización de la Interfaz HUD ---
@@ -1840,6 +2107,9 @@ function setupEventListeners() {
       case "KeyT":
         toggleVehicleModel();
         break;
+      case "KeyF":
+        toggleFullscreen();
+        break;
       case "KeyR":
         carState.speed = 0;
         carState.lateralOffset = 0;
@@ -1892,7 +2162,15 @@ function setupEventListeners() {
   document.getElementById("btnStartGame").addEventListener("click", () => {
     initAudio();
     document.getElementById("controlsHelp").style.display = "none";
+    startLightsSequence();
   });
+
+  const btnFullscreen = document.getElementById("btnFullscreen");
+  if (btnFullscreen) {
+    btnFullscreen.addEventListener("click", () => {
+      toggleFullscreen();
+    });
+  }
 
   const btnVehicle = document.getElementById("btnVehicleToggle");
   if (btnVehicle) {

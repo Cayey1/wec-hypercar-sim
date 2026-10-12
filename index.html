@@ -483,10 +483,25 @@
       </div>
     </div>
 
-    <div style="position: absolute; top: 12px; left: 160px; pointer-events: auto; z-index: 50;">
+    <div style="position: absolute; top: 12px; left: 160px; pointer-events: auto; z-index: 50; display: flex; gap: 8px;">
       <button id="btnVehicleToggle" style="background: rgba(15, 23, 42, 0.88); border: 1px solid rgba(14, 165, 233, 0.6); color: #38bdf8; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 0.75rem; cursor: pointer; transition: all 0.2s ease; letter-spacing: 0.5px;">
         🏎️ FÓRMULA 1 (3D REAL) [T]
       </button>
+      <button id="btnFullscreen" style="background: rgba(15, 23, 42, 0.88); border: 1px solid rgba(14, 165, 233, 0.6); color: #e2e8f0; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 0.75rem; cursor: pointer; transition: all 0.2s ease; letter-spacing: 0.5px;">
+        ⛶ PANTALLA COMPLETA [F]
+      </button>
+    </div>
+
+    <div id="startLightsOverlay" style="display:none; position:absolute; top:18%; left:50%; transform:translateX(-50%); gap:16px; background:rgba(15,23,42,0.92); padding:16px 28px; border-radius:14px; border:2px solid rgba(255,255,255,0.2); z-index:120; box-shadow:0 0 40px rgba(0,0,0,0.8);">
+      <div class="start-light" id="sl1" style="width:36px; height:36px; border-radius:50%; background:#1e293b; border:3px solid #0f172a;"></div>
+      <div class="start-light" id="sl2" style="width:36px; height:36px; border-radius:50%; background:#1e293b; border:3px solid #0f172a;"></div>
+      <div class="start-light" id="sl3" style="width:36px; height:36px; border-radius:50%; background:#1e293b; border:3px solid #0f172a;"></div>
+      <div class="start-light" id="sl4" style="width:36px; height:36px; border-radius:50%; background:#1e293b; border:3px solid #0f172a;"></div>
+      <div class="start-light" id="sl5" style="width:36px; height:36px; border-radius:50%; background:#1e293b; border:3px solid #0f172a;"></div>
+    </div>
+
+    <div id="slipstreamBadge" style="display:none; position:absolute; top:105px; left:50%; transform:translateX(-50%); background:rgba(14, 165, 233, 0.92); color:#ffffff; font-weight:900; font-size:0.85rem; padding:6px 20px; border-radius:20px; z-index:50; box-shadow:0 0 25px rgba(14, 165, 233, 0.85); letter-spacing:1px;">
+      ⚡ REBUFO AERODINÁMICO (+18 KM/H DRS)
     </div>
 
     <div class="top-telemetry-bar">
