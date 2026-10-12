@@ -66,18 +66,19 @@ const SPA_TURNS = [
 ];
 
 const F1_WEC_GRID = [
-  { num: 12, team: "POR", name: "#12 POR", color: 0xef4444, offsetT: 0.245, lat: -2.4 },
-  { num: 38, team: "POR", name: "#38 POR", color: 0xf59e0b, offsetT: 0.268, lat: 0.5 },
-  { num: 82, team: "BMW", name: "#82 BMW", color: 0x1d4ed8, offsetT: 0.290, lat: 1.6 },
-  { num: 35, team: "ALP", name: "#35 ALP", color: 0x06b6d4, offsetT: 0.315, lat: -1.0 },
-  { num: 10, team: "POR", name: "#10 POR", color: 0xdc2626, offsetT: 0.340, lat: 0.8 },
-  { num: 20, team: "FER", name: "#20 FER", color: 0xb91c1c, offsetT: 0.370, lat: -1.5 },
-  { num: 50, team: "FER", name: "#50 FER", color: 0x991b1b, offsetT: 0.400, lat: 1.2 },
-  { num: 11, team: "CAD", name: "#11 CAD", color: 0x0284c7, offsetT: 0.430, lat: -0.6 },
-  { num: 59, team: "CAD", name: "#59 CAD", color: 0x0369a1, offsetT: 0.460, lat: 1.8 }
+  { num: 4, team: "POR", name: "#4 POR", color: 0xdc2626, offsetT: 0.233, lat: -1.0 },
+  { num: 12, team: "POR", name: "#12 POR", color: 0xef4444, offsetT: 0.248, lat: 2.0 },
+  { num: 38, team: "POR", name: "#38 POR", color: 0xf59e0b, offsetT: 0.268, lat: -0.6 },
+  { num: 82, team: "BMW", name: "#82 BMW", color: 0x1d4ed8, offsetT: 0.292, lat: 1.5 },
+  { num: 35, team: "ALP", name: "#35 ALP", color: 0x06b6d4, offsetT: 0.318, lat: -1.8 },
+  { num: 10, team: "POR", name: "#10 POR", color: 0xb91c1c, offsetT: 0.345, lat: 0.8 },
+  { num: 20, team: "FER", name: "#20 FER", color: 0x991b1b, offsetT: 0.375, lat: -1.2 },
+  { num: 50, team: "FER", name: "#50 FER", color: 0x7f1d1d, offsetT: 0.405, lat: 1.2 },
+  { num: 11, team: "CAD", name: "#11 CAD", color: 0x0284c7, offsetT: 0.435, lat: -0.8 },
+  { num: 59, team: "CAD", name: "#59 CAD", color: 0x0369a1, offsetT: 0.465, lat: 1.6 }
 ];
 
-// --- GENERACIÓN DE TEXTURAS DE ALTA DEFINICIÓN ESTILO FÓRMULA 1 ---
+// --- GENERACIÓN DE TEXTURAS DE ALTA DEFINICIÓN ESTILO FÓRMULA 1 Y WEC ---
 function generateAllTextures() {
   // 1. Asfalto F1 Grado 1 con Parrilla de Salida, Trazada y Skid Marks
   textures.asphalt = (() => {
@@ -86,61 +87,100 @@ function generateAllTextures() {
     c.height = 1024;
     const ctx = c.getContext("2d");
 
-    // Asfalto gris oscuro
-    ctx.fillStyle = "#2c2f35";
+    // Asfalto gris oscuro con textura de agregado
+    ctx.fillStyle = "#282a2e";
     ctx.fillRect(0, 0, 1024, 1024);
 
-    // Micro-grano de árido fino
     const imgData = ctx.getImageData(0, 0, 1024, 1024);
     const d = imgData.data;
     for (let i = 0; i < d.length; i += 4) {
-      const n = (Math.random() - 0.5) * 36;
+      const n = (Math.random() - 0.5) * 44;
       d[i] = Math.min(255, Math.max(0, d[i] + n));
       d[i+1] = Math.min(255, Math.max(0, d[i+1] + n));
       d[i+2] = Math.min(255, Math.max(0, d[i+2] + n));
     }
     ctx.putImageData(imgData, 0, 0);
 
-    // Trazada engomada oscura de carrera
+    // Trazada engomada de carrera (Racing Line de alta adherencia)
     const grad = ctx.createLinearGradient(0, 0, 1024, 0);
-    grad.addColorStop(0.0, "rgba(0,0,0,0)");
-    grad.addColorStop(0.22, "rgba(10,12,16,0.55)");
-    grad.addColorStop(0.38, "rgba(25,28,34,0.25)");
-    grad.addColorStop(0.62, "rgba(10,12,16,0.60)");
-    grad.addColorStop(0.78, "rgba(25,28,34,0.25)");
-    grad.addColorStop(1.0, "rgba(0,0,0,0)");
+    grad.addColorStop(0.00, "rgba(0,0,0,0)");
+    grad.addColorStop(0.18, "rgba(8,9,12,0.68)");
+    grad.addColorStop(0.35, "rgba(22,24,28,0.22)");
+    grad.addColorStop(0.62, "rgba(8,9,12,0.72)");
+    grad.addColorStop(0.80, "rgba(22,24,28,0.22)");
+    grad.addColorStop(1.00, "rgba(0,0,0,0)");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1024, 1024);
 
     // Marcas de frenada (Skid Marks) cruzadas estilo F1
-    ctx.fillStyle = "rgba(12, 14, 18, 0.4)";
-    for (let s = 0; s < 5; s++) {
-      ctx.fillRect(180 + s * 140, 0, 35, 1024);
+    ctx.fillStyle = "rgba(10, 12, 16, 0.45)";
+    for (let s = 0; s < 6; s++) {
+      ctx.fillRect(160 + s * 130, 0, 38, 1024);
     }
 
-    // Líneas blancas continuas en los bordes
+    // Líneas blancas continuas reflectantes en los bordes
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(20, 0, 22, 1024);
-    ctx.fillRect(982, 0, 22, 1024);
+    ctx.fillRect(20, 0, 24, 1024);
+    ctx.fillRect(980, 0, 24, 1024);
 
     // Cajones de Parrilla de Salida de F1 (Starting Grid Slots)
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
-    ctx.lineWidth = 8;
-    ctx.strokeRect(260, 200, 180, 140);
-    ctx.strokeRect(580, 600, 180, 140);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+    ctx.lineWidth = 10;
+    ctx.strokeRect(260, 200, 190, 150);
+    ctx.strokeRect(580, 600, 190, 150);
 
     // Huellas de quemada de salida (Launch Burnout Marks)
-    ctx.fillStyle = "rgba(10, 10, 12, 0.7)";
-    ctx.fillRect(280, 210, 30, 120);
-    ctx.fillRect(390, 210, 30, 120);
-    ctx.fillRect(600, 610, 30, 120);
-    ctx.fillRect(710, 610, 30, 120);
+    ctx.fillStyle = "rgba(8, 8, 10, 0.78)";
+    ctx.fillRect(280, 210, 32, 130);
+    ctx.fillRect(395, 210, 32, 130);
+    ctx.fillRect(600, 610, 32, 130);
+    ctx.fillRect(715, 610, 32, 130);
 
     const tex = new THREE.CanvasTexture(c);
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
     tex.repeat.set(1, 55);
     tex.anisotropy = 16;
+    return tex;
+  })();
+
+  // Bump map para rugosidad física del asfalto
+  textures.asphaltBump = (() => {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 512;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#808080";
+    ctx.fillRect(0, 0, 512, 512);
+    const imgData = ctx.getImageData(0, 0, 512, 512);
+    const d = imgData.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const v = 128 + (Math.random() - 0.5) * 80;
+      d[i] = d[i+1] = d[i+2] = v;
+    }
+    ctx.putImageData(imgData, 0, 0);
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(8, 220);
+    return tex;
+  })();
+
+  // Roughness map (la trazada engomada tiene menor rugosidad / más brillo especular)
+  textures.asphaltRoughness = (() => {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 512;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#b0b0b0";
+    ctx.fillRect(0, 0, 512, 512);
+    ctx.fillStyle = "#555555";
+    ctx.fillRect(80, 0, 110, 512);
+    ctx.fillRect(320, 0, 110, 512);
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(1, 55);
     return tex;
   })();
 
@@ -236,6 +276,93 @@ function generateAllTextures() {
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
     tex.repeat.set(22, 1);
+    return tex;
+  })();
+
+  // 4b. Barrera Metálica Armco de Doble Onda Galvanizada
+  textures.armco = (() => {
+    const c = document.createElement("canvas");
+    c.width = 128;
+    c.height = 256;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#cbd5e1";
+    ctx.fillRect(0, 0, 128, 256);
+
+    for (let wave = 0; wave < 2; wave++) {
+      const y0 = wave * 128;
+      const grad = ctx.createLinearGradient(0, y0, 0, y0 + 128);
+      grad.addColorStop(0.0, "#94a3b8");
+      grad.addColorStop(0.2, "#f8fafc");
+      grad.addColorStop(0.5, "#64748b");
+      grad.addColorStop(0.8, "#f1f5f9");
+      grad.addColorStop(1.0, "#475569");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, y0 + 8, 128, 112);
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(50, 1);
+    return tex;
+  })();
+
+  // 4c. Valla de Seguridad de Captura FIA (Chain-link Catch Fence)
+  textures.fence = (() => {
+    const c = document.createElement("canvas");
+    c.width = 128;
+    c.height = 128;
+    const ctx = c.getContext("2d");
+    ctx.clearRect(0, 0, 128, 128);
+
+    ctx.strokeStyle = "rgba(203, 213, 225, 0.75)";
+    ctx.lineWidth = 1.6;
+    for (let i = -128; i < 256; i += 16) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i + 128, 128);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(i, 128);
+      ctx.lineTo(i + 128, 0);
+      ctx.stroke();
+    }
+    // Cables tensores
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.9)";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(0, 10); ctx.lineTo(128, 10);
+    ctx.moveTo(0, 64); ctx.lineTo(128, 64);
+    ctx.moveTo(0, 118); ctx.lineTo(128, 118);
+    ctx.stroke();
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(55, 3);
+    return tex;
+  })();
+
+  // 4d. Gradas con Asientos de Colores
+  textures.seats = (() => {
+    const c = document.createElement("canvas");
+    c.width = 256;
+    c.height = 256;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#334155";
+    ctx.fillRect(0, 0, 256, 256);
+
+    const seatColors = ["#ef4444", "#3b82f6", "#eab308", "#10b981", "#f8fafc"];
+    for (let y = 0; y < 256; y += 16) {
+      for (let x = 0; x < 256; x += 12) {
+        ctx.fillStyle = seatColors[(Math.floor(x/12) + Math.floor(y/16) * 3) % seatColors.length];
+        ctx.fillRect(x + 2, y + 2, 8, 12);
+      }
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(8, 4);
     return tex;
   })();
 
@@ -351,37 +478,126 @@ function createBrakeBoardTexture(text) {
   return new THREE.CanvasTexture(c);
 }
 
-// --- Environment Map PBR para Reflejos Metálicos ---
+// --- Environment Map PBR de Alta Definición (Cielo HDR de Spa-Francorchamps) ---
+let sunLight = null;
+
 function setupEnvironmentMap() {
   try {
     const pmrem = new THREE.PMREMGenerator(renderer);
     pmrem.compileEquirectangularShader();
 
     const c = document.createElement("canvas");
-    c.width = 1024;
-    c.height = 512;
+    c.width = 2048;
+    c.height = 1024;
     const ctx = c.getContext("2d");
 
-    const grad = ctx.createLinearGradient(0, 0, 0, 512);
-    grad.addColorStop(0.0, "#1d4ed8");
-    grad.addColorStop(0.38, "#60a5fa");
-    grad.addColorStop(0.49, "#f1f5f9");
-    grad.addColorStop(0.51, "#1e3a1e");
-    grad.addColorStop(0.72, "#142d14");
-    grad.addColorStop(1.0, "#09090b");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 1024, 512);
+    // 1. Cielo atmosférico realista con gradiente Rayleigh
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, 680);
+    skyGrad.addColorStop(0.00, "#103c78"); // Azul profundo cenital
+    skyGrad.addColorStop(0.28, "#2563eb"); // Azul cielo brillante
+    skyGrad.addColorStop(0.58, "#60a5fa"); // Azul claro
+    skyGrad.addColorStop(0.82, "#bfdbfe"); // Haze cálido
+    skyGrad.addColorStop(1.00, "#e2e8f0"); // Horizonte brumoso
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, 2048, 680);
 
-    ctx.fillStyle = "#ffffff";
+    // 2. Sol deslumbrante con resplandor dorado y corona
+    const sunX = 720;
+    const sunY = 280;
+
+    const sunGlow = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 320);
+    sunGlow.addColorStop(0.0, "rgba(255, 255, 255, 1.0)");
+    sunGlow.addColorStop(0.12, "rgba(254, 240, 138, 0.85)");
+    sunGlow.addColorStop(0.35, "rgba(253, 224, 71, 0.45)");
+    sunGlow.addColorStop(0.70, "rgba(191, 219, 254, 0.18)");
+    sunGlow.addColorStop(1.0, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = sunGlow;
     ctx.beginPath();
-    ctx.arc(380, 160, 48, 0, Math.PI * 2);
+    ctx.arc(sunX, sunY, 320, 0, Math.PI * 2);
     ctx.fill();
+
+    // 3. Nubes cúmulos realistas y estratos con volumen
+    function drawCumulusCloud(cx, cy, scale) {
+      const puffs = [
+        { x: -70, y: 15, r: 45 }, { x: -35, y: -5, r: 60 },
+        { x: 10, y: -20, r: 75 }, { x: 55, y: -8, r: 65 },
+        { x: 95, y: 15, r: 50 }, { x: 0, y: 25, r: 40 }
+      ];
+
+      // Sombra inferior de la nube
+      ctx.fillStyle = "rgba(148, 163, 184, 0.65)";
+      puffs.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(cx + p.x * scale, cy + (p.y + 12) * scale, p.r * scale, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Iluminación solar superior
+      ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+      puffs.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(cx + p.x * scale, cy + p.y * scale, p.r * scale, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    drawCumulusCloud(300, 320, 1.4);
+    drawCumulusCloud(620, 240, 1.8);
+    drawCumulusCloud(1100, 290, 1.6);
+    drawCumulusCloud(1520, 340, 1.3);
+    drawCumulusCloud(1850, 270, 1.5);
+    drawCumulusCloud(850, 380, 1.1);
+
+    // 4. Montañas distantes de las Ardenas (Capa 1: Lejana con niebla azulada)
+    ctx.fillStyle = "#475569";
+    ctx.beginPath();
+    ctx.moveTo(0, 680);
+    for (let x = 0; x <= 2048; x += 16) {
+      const my = 590 + Math.sin(x * 0.005) * 55 + Math.cos(x * 0.012) * 28;
+      ctx.lineTo(x, my);
+    }
+    ctx.lineTo(2048, 680);
+    ctx.closePath();
+    ctx.fill();
+
+    // 5. Montañas intermedias con bosques de coníferas (Capa 2: Verde oscuro azulado)
+    ctx.fillStyle = "#1e3a29";
+    ctx.beginPath();
+    ctx.moveTo(0, 680);
+    for (let x = 0; x <= 2048; x += 12) {
+      const my = 625 + Math.sin(x * 0.009 + 1.2) * 42 + Math.cos(x * 0.021) * 20;
+      ctx.lineTo(x, my);
+    }
+    ctx.lineTo(2048, 680);
+    ctx.closePath();
+    ctx.fill();
+
+    // 6. Siluetas de copas de pinos en las crestas (Capa 3: Primer plano del horizonte)
+    ctx.fillStyle = "#142d1b";
+    for (let x = 0; x < 2048; x += 8) {
+      const h = 18 + (Math.sin(x * 0.05) * 8) + (Math.random() * 8);
+      ctx.beginPath();
+      ctx.moveTo(x - 6, 680);
+      ctx.lineTo(x, 680 - h);
+      ctx.lineTo(x + 6, 680);
+      ctx.fill();
+    }
+
+    // 7. Base del terreno inferior
+    const groundGrad = ctx.createLinearGradient(0, 680, 0, 1024);
+    groundGrad.addColorStop(0.0, "#1e3a1e");
+    groundGrad.addColorStop(0.4, "#142d14");
+    groundGrad.addColorStop(1.0, "#090d0a");
+    ctx.fillStyle = groundGrad;
+    ctx.fillRect(0, 680, 2048, 344);
 
     const tex = new THREE.CanvasTexture(c);
     tex.mapping = THREE.EquirectangularReflectionMapping;
     scene.environment = pmrem.fromEquirectangular(tex).texture;
     scene.background = tex;
-  } catch (e) {}
+  } catch (e) {
+    console.error("Error setting up HDR environment map:", e);
+  }
 }
 
 function init() {
@@ -426,22 +642,23 @@ function init() {
 }
 
 function setupLighting() {
-  const hemi = new THREE.HemisphereLight(0xdbeafe, 0x27272a, 0.85);
+  const hemi = new THREE.HemisphereLight(0xdbeafe, 0x1f2937, 0.95);
   scene.add(hemi);
 
-  const sun = new THREE.DirectionalLight(0xfffaea, 1.6);
-  sun.position.set(280, 520, 180);
-  sun.castShadow = true;
-  sun.shadow.mapSize.width = 2048;
-  sun.shadow.mapSize.height = 2048;
-  sun.shadow.camera.near = 10;
-  sun.shadow.camera.far = 1400;
-  const d = 200;
-  sun.shadow.camera.left = -d;
-  sun.shadow.camera.right = d;
-  sun.shadow.camera.top = d;
-  sun.shadow.camera.bottom = -d;
-  scene.add(sun);
+  sunLight = new THREE.DirectionalLight(0xfffaea, 1.85);
+  sunLight.position.set(280, 520, 180);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.width = 4096;
+  sunLight.shadow.mapSize.height = 4096;
+  sunLight.shadow.camera.near = 5;
+  sunLight.shadow.camera.far = 900;
+  sunLight.shadow.bias = -0.0003;
+  const d = 110;
+  sunLight.shadow.camera.left = -d;
+  sunLight.shadow.camera.right = d;
+  sunLight.shadow.camera.top = d;
+  sunLight.shadow.camera.bottom = -d;
+  scene.add(sunLight);
 }
 
 // --- Trazado 3D de Spa-Francorchamps ---
@@ -510,19 +727,27 @@ function createSpaFrancorchampsTrack() {
   trackCurve = new THREE.CatmullRomCurve3(trackPoints, true, "centripetal", 0.4);
   trackLength = trackCurve.getLength();
 
-  const segments = 560;
-  const trackWidth = 14.8;
-  const curbWidth = 1.35;
+  const segments = 600;
+  const trackWidth = 15.2;
+  const curbWidth = 1.45;
 
   const roadGeom = new THREE.BufferGeometry();
   const curbLeftGeom = new THREE.BufferGeometry();
   const curbRightGeom = new THREE.BufferGeometry();
-  const wallGeom = new THREE.BufferGeometry();
+  const wallRightGeom = new THREE.BufferGeometry();
+  const wallLeftGeom = new THREE.BufferGeometry();
+  const fenceRightGeom = new THREE.BufferGeometry();
+  const fenceLeftGeom = new THREE.BufferGeometry();
 
   const roadVerts = [], roadIndices = [], roadUvs = [];
   const curbLVerts = [], curbLIndices = [], curbLUvs = [];
   const curbRVerts = [], curbRIndices = [], curbRUvs = [];
-  const wallVerts = [], wallIndices = [], wallUvs = [];
+  const wallRVerts = [], wallRIndices = [], wallRUvs = [];
+  const wallLVerts = [], wallLIndices = [], wallLUvs = [];
+  const fenceRVerts = [], fenceRIndices = [], fenceRUvs = [];
+  const fenceLVerts = [], fenceLIndices = [], fenceLUvs = [];
+
+  const postPositions = [];
 
   for (let i = 0; i <= segments; i++) {
     const t = i / segments;
@@ -531,48 +756,80 @@ function createSpaFrancorchampsTrack() {
     const up = new THREE.Vector3(0, 1, 0);
     const normal = new THREE.Vector3().crossVectors(tangent, up).normalize();
 
-    const leftPt = pt.clone().add(normal.clone().multiplyScalar(-trackWidth / 2));
-    const rightPt = pt.clone().add(normal.clone().multiplyScalar(trackWidth / 2));
+    // Inclinación / peralte natural de curva (banking)
+    const bank = Math.sin(t * Math.PI * 4) * 0.04;
+    const normB = normal.clone();
+    normB.y += bank;
+    normB.normalize();
 
+    const leftPt = pt.clone().add(normB.clone().multiplyScalar(-trackWidth / 2));
+    const rightPt = pt.clone().add(normB.clone().multiplyScalar(trackWidth / 2));
+
+    // 1. Asfalto de la pista
     roadVerts.push(leftPt.x, leftPt.y, leftPt.z);
     roadVerts.push(rightPt.x, rightPt.y, rightPt.z);
     roadUvs.push(0, t);
     roadUvs.push(1, t);
 
-    const curbLOut = leftPt.clone().add(normal.clone().multiplyScalar(-curbWidth));
-    curbLOut.y += 0.09;
+    // 2. Pianos 3D con relieve biselado
+    const curbLOut = leftPt.clone().add(normB.clone().multiplyScalar(-curbWidth));
+    curbLOut.y += 0.11;
     curbLVerts.push(curbLOut.x, curbLOut.y, curbLOut.z);
-    curbLVerts.push(leftPt.x, leftPt.y + 0.02, leftPt.z);
+    curbLVerts.push(leftPt.x, leftPt.y + 0.03, leftPt.z);
     curbLUvs.push(0, t);
     curbLUvs.push(1, t);
 
-    const curbROut = rightPt.clone().add(normal.clone().multiplyScalar(curbWidth));
-    curbROut.y += 0.09;
-    curbRVerts.push(rightPt.x, rightPt.y + 0.02, rightPt.z);
+    const curbROut = rightPt.clone().add(normB.clone().multiplyScalar(curbWidth));
+    curbROut.y += 0.11;
+    curbRVerts.push(rightPt.x, rightPt.y + 0.03, rightPt.z);
     curbRVerts.push(curbROut.x, curbROut.y, curbROut.z);
     curbRUvs.push(0, t);
     curbRUvs.push(1, t);
 
-    const wallBase = rightPt.clone().add(normal.clone().multiplyScalar(2.9));
-    const wallTop = wallBase.clone().add(new THREE.Vector3(0, 1.45, 0));
-    wallVerts.push(wallBase.x, wallBase.y, wallBase.z);
-    wallVerts.push(wallTop.x, wallTop.y, wallTop.z);
-    wallUvs.push(t, 0);
-    wallUvs.push(t, 1);
+    // 3. Muro Derecho (Hormigón + Patrocinadores)
+    const wallRBase = rightPt.clone().add(normB.clone().multiplyScalar(3.1));
+    const wallRTop = wallRBase.clone().add(new THREE.Vector3(0, 1.45, 0));
+    wallRVerts.push(wallRBase.x, wallRBase.y, wallRBase.z);
+    wallRVerts.push(wallRTop.x, wallRTop.y, wallRTop.z);
+    wallRUvs.push(t, 0);
+    wallRUvs.push(t, 1);
+
+    // Valla de captura derecha (Catch Fence)
+    const fenceRTop = wallRTop.clone().add(new THREE.Vector3(0, 2.5, 0));
+    fenceRVerts.push(wallRTop.x, wallRTop.y, wallRTop.z);
+    fenceRVerts.push(fenceRTop.x, fenceRTop.y, fenceRTop.z);
+    fenceRUvs.push(t, 0);
+    fenceRUvs.push(t, 1);
+
+    // 4. Muro Izquierdo (Armco Galvanizado + Patrocinadores)
+    const wallLBase = leftPt.clone().add(normB.clone().multiplyScalar(-3.1));
+    const wallLTop = wallLBase.clone().add(new THREE.Vector3(0, 1.45, 0));
+    wallLVerts.push(wallLBase.x, wallLBase.y, wallLBase.z);
+    wallLVerts.push(wallLTop.x, wallLTop.y, wallLTop.z);
+    wallLUvs.push(t, 0);
+    wallLUvs.push(t, 1);
+
+    // Valla de captura izquierda
+    const fenceLTop = wallLTop.clone().add(new THREE.Vector3(0, 2.5, 0));
+    fenceLVerts.push(wallLTop.x, wallLTop.y, wallLTop.z);
+    fenceLVerts.push(fenceLTop.x, fenceLTop.y, fenceLTop.z);
+    fenceLUvs.push(t, 0);
+    fenceLUvs.push(t, 1);
+
+    // Postes de acero cada 15 segmentos
+    if (i % 15 === 0) {
+      postPositions.push(wallRBase.clone(), wallLBase.clone());
+    }
 
     if (i < segments) {
       const b = i * 2;
-      roadIndices.push(b, b + 1, b + 2);
-      roadIndices.push(b + 1, b + 3, b + 2);
-
-      curbLIndices.push(b, b + 1, b + 2);
-      curbLIndices.push(b + 1, b + 3, b + 2);
-
-      curbRIndices.push(b, b + 1, b + 2);
-      curbRIndices.push(b + 1, b + 3, b + 2);
-
-      wallIndices.push(b, b + 1, b + 2);
-      wallIndices.push(b + 1, b + 3, b + 2);
+      roadIndices.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+      curbLIndices.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+      curbRIndices.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+      wallRIndices.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+      wallLIndices.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+      fenceRIndices.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
+      fenceLIndices.push(b, b + 1, b + 2, b + 1, b + 3, b + 2);
     }
   }
 
@@ -583,16 +840,19 @@ function createSpaFrancorchampsTrack() {
 
   trackMesh = new THREE.Mesh(roadGeom, new THREE.MeshStandardMaterial({
     map: textures.asphalt,
-    roughness: 0.72,
-    metalness: 0.18
+    bumpMap: textures.asphaltBump,
+    bumpScale: 0.038,
+    roughnessMap: textures.asphaltRoughness,
+    roughness: 0.65,
+    metalness: 0.14
   }));
   trackMesh.receiveShadow = true;
   scene.add(trackMesh);
 
   const curbMat = new THREE.MeshStandardMaterial({
     map: textures.curb,
-    roughness: 0.52,
-    metalness: 0.15
+    roughness: 0.48,
+    metalness: 0.12
   });
 
   curbLeftGeom.setAttribute("position", new THREE.Float32BufferAttribute(curbLVerts, 3));
@@ -607,63 +867,84 @@ function createSpaFrancorchampsTrack() {
   curbRightGeom.computeVertexNormals();
   scene.add(new THREE.Mesh(curbRightGeom, curbMat));
 
-  wallGeom.setAttribute("position", new THREE.Float32BufferAttribute(wallVerts, 3));
-  wallGeom.setAttribute("uv", new THREE.Float32BufferAttribute(wallUvs, 2));
-  wallGeom.setIndex(wallIndices);
-  wallGeom.computeVertexNormals();
+  // Muros izquierdo y derecho con patrocinadores
+  wallRightGeom.setAttribute("position", new THREE.Float32BufferAttribute(wallRVerts, 3));
+  wallRightGeom.setAttribute("uv", new THREE.Float32BufferAttribute(wallRUvs, 2));
+  wallRightGeom.setIndex(wallRIndices);
+  wallRightGeom.computeVertexNormals();
+  const wallR = new THREE.Mesh(wallRightGeom, new THREE.MeshStandardMaterial({ map: textures.wall, roughness: 0.55 }));
+  wallR.castShadow = true;
+  wallR.receiveShadow = true;
+  scene.add(wallR);
 
-  const wallMesh = new THREE.Mesh(wallGeom, new THREE.MeshStandardMaterial({
-    map: textures.wall,
-    roughness: 0.60,
-    metalness: 0.12
-  }));
-  wallMesh.castShadow = true;
-  wallMesh.receiveShadow = true;
-  scene.add(wallMesh);
-}
+  wallLeftGeom.setAttribute("position", new THREE.Float32BufferAttribute(wallLVerts, 3));
+  wallLeftGeom.setAttribute("uv", new THREE.Float32BufferAttribute(wallLUvs, 2));
+  wallLeftGeom.setIndex(wallLIndices);
+  wallLeftGeom.computeVertexNormals();
+  const wallL = new THREE.Mesh(wallLeftGeom, new THREE.MeshStandardMaterial({ map: textures.armco, roughness: 0.42, metalness: 0.72 }));
+  wallL.castShadow = true;
+  wallL.receiveShadow = true;
+  scene.add(wallL);
 
-// Carteles de Distancia de Frenada F1 (150m, 100m, 50m)
-function setupBrakeBoards() {
-  const corners = [0.08, 0.44, 0.88]; // La Source, Les Combes, Bus Stop
-  corners.forEach(tCorner => {
-    [
-      { dist: -0.018, tex: textures.brakeBrd150 },
-      { dist: -0.012, tex: textures.brakeBrd100 },
-      { dist: -0.006, tex: textures.brakeBrd50 }
-    ].forEach(b => {
-      const t = (tCorner + b.dist + 1.0) % 1.0;
-      const pt = trackCurve.getPointAt(t);
-      const tangent = trackCurve.getTangentAt(t).normalize();
-      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+  // Vallas de captura FIA transparentes
+  const fenceMat = new THREE.MeshStandardMaterial({
+    map: textures.fence,
+    transparent: true,
+    opacity: 0.88,
+    side: THREE.DoubleSide,
+    roughness: 0.4,
+    metalness: 0.85
+  });
 
-      const boardPos = pt.clone().add(normal.multiplyScalar(8.8));
-      boardPos.y += 1.2;
+  fenceRightGeom.setAttribute("position", new THREE.Float32BufferAttribute(fenceRVerts, 3));
+  fenceRightGeom.setAttribute("uv", new THREE.Float32BufferAttribute(fenceRUvs, 2));
+  fenceRightGeom.setIndex(fenceRIndices);
+  fenceRightGeom.computeVertexNormals();
+  scene.add(new THREE.Mesh(fenceRightGeom, fenceMat));
 
-      const boardMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.6, 1.6),
-        new THREE.MeshBasicMaterial({ map: b.tex, side: THREE.DoubleSide })
-      );
-      boardMesh.position.copy(boardPos);
-      boardMesh.lookAt(boardPos.clone().add(tangent));
-      scene.add(boardMesh);
-    });
+  fenceLeftGeom.setAttribute("position", new THREE.Float32BufferAttribute(fenceLVerts, 3));
+  fenceLeftGeom.setAttribute("uv", new THREE.Float32BufferAttribute(fenceLUvs, 2));
+  fenceLeftGeom.setIndex(fenceLIndices);
+  fenceLeftGeom.computeVertexNormals();
+  scene.add(new THREE.Mesh(fenceLeftGeom, fenceMat));
+
+  // Postes de acero de la valla
+  const postGeo = new THREE.CylinderGeometry(0.08, 0.08, 3.9, 8);
+  const postMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.85, roughness: 0.25 });
+  postPositions.forEach(p => {
+    const postMesh = new THREE.Mesh(postGeo, postMat);
+    postMesh.position.set(p.x, p.y + 1.95, p.z);
+    postMesh.castShadow = true;
+    scene.add(postMesh);
   });
 }
 
 function createEnvironment() {
-  const groundGeo = new THREE.PlaneGeometry(3800, 3800, 30, 30);
+  // Terreno ondulado con colinas de las Ardenas
+  const groundGeo = new THREE.PlaneGeometry(4200, 4200, 48, 48);
   groundGeo.rotateX(-Math.PI / 2);
-  const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x1f4722, roughness: 0.95 }));
-  ground.position.y = -35;
+  const pos = groundGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const z = pos.getZ(i);
+    const hill = Math.sin(x * 0.003) * 22 + Math.cos(z * 0.0035) * 18 + Math.sin(x * 0.01 + z * 0.01) * 8;
+    pos.setY(i, hill - 38);
+  }
+  groundGeo.computeVertexNormals();
+
+  const groundMat = new THREE.MeshStandardMaterial({ color: 0x19451c, roughness: 0.92 });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.receiveShadow = true;
   scene.add(ground);
 
+  // Tribunas Detalladas (La Source y Eau Rouge con asientos)
   createDetailedGrandstand(new THREE.Vector3(-25, 8, -50), 0.1, 140, 18);
   createDetailedGrandstand(new THREE.Vector3(15, 25, 450), -0.38, 95, 22);
-  // Tribuna y torre de comisarios de Eau Rouge (como en la foto de referencia)
-  createDetailedGrandstand(new THREE.Vector3(22, 2, 300), -0.22, 110, 20);
-  createMarshalTower(new THREE.Vector3(86, -22, 220));
+  // Tribuna icónica de Eau Rouge en la subida izquierda (exacta a la foto)
+  createDetailedGrandstand(new THREE.Vector3(26, 4, 310), -0.25, 125, 22);
 
+  // Torres de comisarios rojas (Eau Rouge a la derecha de la bajada)
+  createMarshalTower(new THREE.Vector3(86, -22, 220));
   createMarshalTower(new THREE.Vector3(45, 0, -210));
   createMarshalTower(new THREE.Vector3(88, 46, 560));
 
@@ -672,16 +953,39 @@ function createEnvironment() {
 
 function createDetailedGrandstand(pos, rotY, length, height) {
   const group = new THREE.Group();
-  const steps = new THREE.Mesh(new THREE.BoxGeometry(16, height, length), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }));
+
+  // Graderío con textura de asientos de colores
+  const stepsGeo = new THREE.BoxGeometry(16, height, length);
+  const stepsMat = new THREE.MeshStandardMaterial({
+    map: textures.seats,
+    roughness: 0.75
+  });
+  const steps = new THREE.Mesh(stepsGeo, stepsMat);
   steps.castShadow = true;
   steps.receiveShadow = true;
   group.add(steps);
 
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(22, 1.4, length + 4), new THREE.MeshStandardMaterial({ color: 0x047857, roughness: 0.5 }));
-  roof.position.set(-2, height / 2 + 5, 0);
-  roof.rotation.z = -0.14;
+  // Techo verde curvado con pilares
+  const roof = new THREE.Mesh(
+    new THREE.BoxGeometry(22, 1.4, length + 4),
+    new THREE.MeshStandardMaterial({ color: 0x065f46, roughness: 0.38, metalness: 0.45 })
+  );
+  roof.position.set(-2, height / 2 + 5.2, 0);
+  roof.rotation.z = -0.16;
   roof.castShadow = true;
   group.add(roof);
+
+  // Pilares de acero de soporte
+  const pilarMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8 });
+  const pilarGeo = new THREE.CylinderGeometry(0.35, 0.35, height + 6, 8);
+  for (let z = -length / 2 + 8; z <= length / 2 - 8; z += 24) {
+    const p1 = new THREE.Mesh(pilarGeo, pilarMat);
+    p1.position.set(-8, 3, z);
+    group.add(p1);
+    const p2 = new THREE.Mesh(pilarGeo, pilarMat);
+    p2.position.set(6, 3, z);
+    group.add(p2);
+  }
 
   group.position.copy(pos);
   group.rotation.y = rotY;
@@ -690,48 +994,71 @@ function createDetailedGrandstand(pos, rotY, length, height) {
 
 function createMarshalTower(pos) {
   const tower = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.BoxGeometry(7, 18, 7), new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.35 }));
+  // Base roja
+  const base = new THREE.Mesh(new THREE.BoxGeometry(7, 18, 7), new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.32 }));
   base.position.y = 9;
   base.castShadow = true;
   tower.add(base);
 
-  const cab = new THREE.Mesh(new THREE.BoxGeometry(7.6, 5.5, 7.6), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.15 }));
+  // Cabina acristalada
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(7.8, 5.8, 7.8), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 }));
   cab.position.y = 19.5;
   tower.add(cab);
+
+  // Barandilla y antena
+  const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, 8), new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.9 }));
+  antenna.position.set(0, 26, 0);
+  tower.add(antenna);
 
   tower.position.copy(pos);
   scene.add(tower);
 }
 
 function createPineTrees() {
-  const treeGeo = new THREE.ConeGeometry(5, 16, 6);
-  const treeMat = new THREE.MeshStandardMaterial({ color: 0x14532d, roughness: 0.88 });
-  const trunkGeo = new THREE.CylinderGeometry(0.8, 1.3, 4);
-  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3e2723 });
+  // Pinos realistas multinivel
+  const trunkGeo = new THREE.CylinderGeometry(0.7, 1.2, 4.5, 8);
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x3e2723, roughness: 0.95 });
 
-  for (let i = 0; i < 180; i++) {
+  const c1Geo = new THREE.ConeGeometry(5.2, 7.5, 7);
+  const c2Geo = new THREE.ConeGeometry(4.0, 6.2, 7);
+  const c3Geo = new THREE.ConeGeometry(2.8, 5.0, 7);
+  const folMat = new THREE.MeshStandardMaterial({ color: 0x14532d, roughness: 0.85 });
+  const folMat2 = new THREE.MeshStandardMaterial({ color: 0x166534, roughness: 0.82 });
+
+  for (let i = 0; i < 360; i++) {
     const t = Math.random();
     const trackPoint = trackCurve.getPointAt(t);
     const tangent = trackCurve.getTangentAt(t).normalize();
     const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
     const side = Math.random() > 0.5 ? 1 : -1;
-    const dist = 30 + Math.random() * 95;
+    const dist = 28 + Math.random() * 125;
     const treePos = trackPoint.clone().add(normal.multiplyScalar(side * dist));
-    treePos.y -= 2;
+    treePos.y -= 2.5;
 
     const tree = new THREE.Group();
-    const foliage = new THREE.Mesh(treeGeo, treeMat);
-    foliage.position.y = 11;
-    foliage.castShadow = true;
-    tree.add(foliage);
-
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-    trunk.position.y = 2;
+    trunk.position.y = 2.25;
     tree.add(trunk);
 
+    const fMat = Math.random() > 0.5 ? folMat : folMat2;
+    const c1 = new THREE.Mesh(c1Geo, fMat);
+    c1.position.y = 7.0;
+    c1.castShadow = true;
+    tree.add(c1);
+
+    const c2 = new THREE.Mesh(c2Geo, fMat);
+    c2.position.y = 11.2;
+    c2.castShadow = true;
+    tree.add(c2);
+
+    const c3 = new THREE.Mesh(c3Geo, fMat);
+    c3.position.y = 15.0;
+    c3.castShadow = true;
+    tree.add(c3);
+
     tree.position.copy(treePos);
-    const s = 0.85 + Math.random() * 0.75;
+    const s = 0.8 + Math.random() * 0.7;
     tree.scale.set(s, s, s);
     scene.add(tree);
   }
@@ -1594,6 +1921,12 @@ function animate() {
   updatePhysics(dt);
   updateOpponents(dt);
   updateCameras();
+
+  if (playerCar && sunLight) {
+    const cp = playerCar.position;
+    sunLight.position.set(cp.x + 90, cp.y + 190, cp.z + 70);
+    sunLight.target.position.copy(cp);
+  }
 
   renderer.render(scene, camera);
   mirrorRenderer.render(scene, mirrorCamera);
