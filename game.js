@@ -1,8 +1,7 @@
 /**
- * WEC Hypercar Simulator - Spa-Francorchamps (Texturizado de Alta Fidelidad)
- * Motor 3D con texturas procedurales avanzadas: asfalto con trazada engomada,
- * pianos desgastados, fibra de carbono, vallas con patrocinadores, neumáticos
- * Michelin con pinzas de freno, y desenfoque de velocidad radial.
+ * WEC Hypercar Simulator - Spa-Francorchamps (Pro Ultra Edition)
+ * Three.js con PMREMGenerator (Reflejos de Cielo PBR), Geometría de Hypercar
+ * de Alta Complejidad, Asfalto con Trazada Engomada, Pianos 3D y Desenfoque Radial.
  */
 
 // --- Variables Principales ---
@@ -14,30 +13,29 @@ let clock;
 let isAudioEnabled = false;
 let audioCtx, engineOsc, engineGain, turboOsc, turboGain;
 
-// Texturas Procedurales
 let textures = {};
 
-// Estado del Coche del Jugador
+// Estado del Coche (Configurado exactamente como en la captura del usuario)
 const carState = {
-  speed: 0,            // m/s
+  speed: 69.4,         // ~250 km/h (idéntico a la imagen)
   maxSpeed: 96,        // ~345 km/h
   accel: 25.0,
   brakeForce: 38.0,
   steerAngle: 0,
-  posDistance: 0.02,
-  lateralOffset: 1.8,
+  posDistance: 0.22,   // Bajando a Eau Rouge (como en la foto)
+  lateralOffset: 1.2,
   gear: 6,
-  rpm: 8200,
-  downforce: 5.1,
-  grip: 2.1,
-  fuel: 89.0,
+  rpm: 8350,
+  downforce: 5.1,      // 5.1 kN como en la foto
+  grip: 2.1,           // 2.1 g como en la foto
+  fuel: 89.0,          // 89 L
   lap: 1,
   maxLaps: 3,
   lapStartTime: 0,
-  currentLapTime: 43.35,
+  currentLapTime: 43.35, // 0:43.350 como en la foto
   bestLapTime: 0,
-  topSpeedKmh: 271,
-  position: 22,
+  topSpeedKmh: 271,    // 271 km/h como en la foto
+  position: 22,        // Posición 22 / 26
   totalCars: 26,
   cameraMode: 0,
   ersBoost: false
@@ -67,20 +65,19 @@ const SPA_TURNS = [
 ];
 
 const WEC_TEAMS = [
-  { num: 12, team: "POR", name: "Porsche Penske #12", color: 0xef4444 },
-  { num: 38, team: "POR", name: "Hertz JOTA #38", color: 0xf59e0b },
-  { num: 82, team: "BMW", name: "BMW M Team WRT #82", color: 0x2563eb },
-  { num: 35, team: "BMW", name: "BMW M Team WRT #35", color: 0x1d4ed8 },
-  { num: 10, team: "POR", name: "Porsche Penske #10", color: 0xdc2626 },
-  { num: 4,  team: "POR", name: "Porsche Penske #4",  color: 0x991b1b },
-  { num: 20, team: "FER", name: "Ferrari AF Corse #20", color: 0xb91c1c },
-  { num: 50, team: "BMW", name: "BMW M Hybrid #50", color: 0x1e40af },
-  { num: 11, team: "CAD", name: "Cadillac Racing #11", color: 0x0284c7 },
-  { num: 59, team: "CAD", name: "Action Express #59", color: 0x0369a1 }
+  { num: 12, team: "POR", name: "#12 POR", color: 0xef4444, offsetT: 0.245, lat: -2.8 },
+  { num: 38, team: "POR", name: "#38 POR", color: 0xf59e0b, offsetT: 0.265, lat: 0.2 },
+  { num: 82, team: "BMW", name: "#82 BMW", color: 0x1d4ed8, offsetT: 0.285, lat: 1.5 },
+  { num: 35, team: "BMW", name: "#35 BMW", color: 0x2563eb, offsetT: 0.305, lat: -1.2 },
+  { num: 10, team: "POR", name: "#10 POR", color: 0xdc2626, offsetT: 0.33, lat: 0.5 },
+  { num: 4,  team: "POR", name: "#4 POR",  color: 0x991b1b, offsetT: 0.36, lat: -1.8 },
+  { num: 20, team: "FER", name: "#20 FER", color: 0xb91c1c, offsetT: 0.39, lat: 1.2 },
+  { num: 50, team: "BMW", name: "#50 BMW", color: 0x1e40af, offsetT: 0.42, lat: -0.5 },
+  { num: 11, team: "CAD", name: "#11 CAD", color: 0x0284c7, offsetT: 0.45, lat: 1.8 },
+  { num: 59, team: "CAD", name: "#59 CAD", color: 0x0369a1, offsetT: 0.48, lat: -1.5 }
 ];
 
-// --- GENERADOR DE TEXTURAS PROCEDURALES REALISTAS EN ALTA DEFINICIÓN ---
-
+// --- GENERADOR DE TEXTURAS PROCEDURALES EN ALTA RESOLUCIÓN ---
 function generateAllTextures() {
   // 1. Asfalto de Competición con Trazada Engomada y Líneas Blancas
   textures.asphalt = (() => {
@@ -89,65 +86,61 @@ function generateAllTextures() {
     c.height = 1024;
     const ctx = c.getContext("2d");
 
-    // Base de asfalto gris oscuro
-    ctx.fillStyle = "#282b30";
+    ctx.fillStyle = "#2b2e34";
     ctx.fillRect(0, 0, 1024, 1024);
 
-    // Ruido de áridos y gravilla
     const imgData = ctx.getImageData(0, 0, 1024, 1024);
     const d = imgData.data;
     for (let i = 0; i < d.length; i += 4) {
-      const noise = (Math.random() - 0.5) * 38;
-      d[i] = Math.min(255, Math.max(0, d[i] + noise));
-      d[i+1] = Math.min(255, Math.max(0, d[i+1] + noise));
-      d[i+2] = Math.min(255, Math.max(0, d[i+2] + noise));
+      const n = (Math.random() - 0.5) * 40;
+      d[i] = Math.min(255, Math.max(0, d[i] + n));
+      d[i+1] = Math.min(255, Math.max(0, d[i+1] + n));
+      d[i+2] = Math.min(255, Math.max(0, d[i+2] + n));
     }
     ctx.putImageData(imgData, 0, 0);
 
-    // Trazada engomada oscura de los neumáticos
+    // Trazada engomada de neumáticos
     const grad = ctx.createLinearGradient(0, 0, 1024, 0);
     grad.addColorStop(0.0, "rgba(0,0,0,0)");
-    grad.addColorStop(0.20, "rgba(10,12,15,0.45)");
-    grad.addColorStop(0.35, "rgba(20,22,25,0.2)");
-    grad.addColorStop(0.65, "rgba(10,12,15,0.5)");
-    grad.addColorStop(0.80, "rgba(20,22,25,0.2)");
+    grad.addColorStop(0.25, "rgba(12,14,18,0.5)");
+    grad.addColorStop(0.40, "rgba(25,28,32,0.25)");
+    grad.addColorStop(0.65, "rgba(12,14,18,0.55)");
+    grad.addColorStop(0.80, "rgba(25,28,32,0.25)");
     grad.addColorStop(1.0, "rgba(0,0,0,0)");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1024, 1024);
 
     // Líneas blancas continuas laterales
-    ctx.fillStyle = "#f8fafc";
-    ctx.fillRect(20, 0, 22, 1024);   // Borde izquierdo
-    ctx.fillRect(982, 0, 22, 1024);  // Borde derecho
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(18, 0, 24, 1024);
+    ctx.fillRect(982, 0, 24, 1024);
 
     const tex = new THREE.CanvasTexture(c);
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(1, 55);
-    tex.anisotropy = 8;
+    tex.repeat.set(1, 60);
+    tex.anisotropy = 16;
     return tex;
   })();
 
-  // 2. Pianos / Curbs Rojo y Amarillo de Spa con Desgaste y Ranuras
+  // 2. Pianos Rojo y Amarillo de Spa con Relieve 3D
   textures.curb = (() => {
     const c = document.createElement("canvas");
     c.width = 512;
     c.height = 512;
     const ctx = c.getContext("2d");
 
-    const stripeH = 64;
-    for (let y = 0; y < 512; y += stripeH) {
-      const isRed = (y / stripeH) % 2 === 0;
-      ctx.fillStyle = isRed ? "#dc2626" : "#facc15"; // Rojo y amarillo de Spa
-      ctx.fillRect(0, y, 512, stripeH);
+    const h = 64;
+    for (let y = 0; y < 512; y += h) {
+      const isRed = (y / h) % 2 === 0;
+      ctx.fillStyle = isRed ? "#dc2626" : "#facc15";
+      ctx.fillRect(0, y, 512, h);
 
-      // Ranura 3D de relieve entre bloques de hormigón
-      ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
-      ctx.fillRect(0, y, 512, 5);
+      ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+      ctx.fillRect(0, y, 512, 6);
 
-      // Marcas de goma de neumáticos
       for (let s = 0; s < 4; s++) {
-        ctx.fillStyle = "rgba(15, 15, 18, 0.35)";
+        ctx.fillStyle = "rgba(15, 15, 18, 0.4)";
         ctx.fillRect(Math.random() * 400, y + Math.random() * 45, Math.random() * 80 + 30, 4);
       }
     }
@@ -155,7 +148,7 @@ function generateAllTextures() {
     const tex = new THREE.CanvasTexture(c);
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(1, 45);
+    tex.repeat.set(1, 50);
     return tex;
   })();
 
@@ -167,40 +160,34 @@ function generateAllTextures() {
     const ctx = c.getContext("2d");
     ctx.fillStyle = "#111215";
     ctx.fillRect(0, 0, 64, 64);
-
-    ctx.fillStyle = "#24262b";
+    ctx.fillStyle = "#282a30";
     for (let x = 0; x < 64; x += 8) {
       for (let y = 0; y < 64; y += 8) {
-        if ((x / 8 + y / 8) % 2 === 0) {
-          ctx.fillRect(x, y, 8, 8);
-        }
+        if ((x / 8 + y / 8) % 2 === 0) ctx.fillRect(x, y, 8, 8);
       }
     }
     const tex = new THREE.CanvasTexture(c);
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(6, 6);
+    tex.repeat.set(8, 8);
     return tex;
   })();
 
-  // 4. Muros de Hormigón con Patrocinadores Oficiales (Rolex, TotalEnergies, Michelin, DHL)
+  // 4. Muros con Patrocinadores WEC (Rolex, TotalEnergies, Michelin, DHL)
   textures.wall = (() => {
     const c = document.createElement("canvas");
     c.width = 1024;
     c.height = 256;
     const ctx = c.getContext("2d");
 
-    // Base de hormigón blanco/gris
     ctx.fillStyle = "#e2e8f0";
     ctx.fillRect(0, 0, 1024, 256);
 
-    // Juntas verticales de bloques
-    ctx.fillStyle = "rgba(100, 116, 139, 0.5)";
+    ctx.fillStyle = "rgba(100, 116, 139, 0.4)";
     for (let x = 0; x < 1024; x += 128) {
       ctx.fillRect(x, 0, 4, 256);
     }
 
-    // Banners de patrocinadores estilo WEC
     const sponsors = [
       { name: "ROLEX", bg: "#065f46", text: "#fde047" },
       { name: "TotalEnergies", bg: "#dc2626", text: "#ffffff" },
@@ -227,45 +214,23 @@ function generateAllTextures() {
     return tex;
   })();
 
-  // 5. Escapes y Chapa de Protección Térmica (Heatshield)
-  textures.heatshield = (() => {
-    const c = document.createElement("canvas");
-    c.width = 128;
-    c.height = 128;
-    const ctx = c.getContext("2d");
-    ctx.fillStyle = "#71717a";
-    ctx.fillRect(0, 0, 128, 128);
-    // Patrón gofrado de calor
-    ctx.fillStyle = "#a1a1aa";
-    for (let x = 0; x < 128; x += 8) {
-      ctx.fillRect(x, 0, 3, 128);
-    }
-    const tex = new THREE.CanvasTexture(c);
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapT = THREE.RepeatWrapping;
-    return tex;
-  })();
-
-  // 6. Neumáticos Michelin con Letras en el Flanco
+  // 5. Neumáticos Michelin con Letras
   textures.tire = (() => {
     const c = document.createElement("canvas");
     c.width = 512;
     c.height = 512;
     const ctx = c.getContext("2d");
 
-    // Goma negra
     ctx.fillStyle = "#18181b";
     ctx.beginPath();
     ctx.arc(256, 256, 250, 0, Math.PI * 2);
     ctx.fill();
 
-    // Llanta interior
     ctx.fillStyle = "#27272a";
     ctx.beginPath();
     ctx.arc(256, 256, 160, 0, Math.PI * 2);
     ctx.fill();
 
-    // Texto circular de Michelin en amarillo y blanco
     ctx.save();
     ctx.translate(256, 256);
     ctx.fillStyle = "#facc15";
@@ -280,44 +245,42 @@ function generateAllTextures() {
     return new THREE.CanvasTexture(c);
   })();
 
-  // 7. Textura de Livery Hypercar (Porsche / Ferrari WEC)
+  // 6. Livery Hypercar Rojo y Negro con Patrocinadores
   textures.carLivery = (() => {
     const c = document.createElement("canvas");
     c.width = 1024;
     c.height = 1024;
     const ctx = c.getContext("2d");
 
-    // Rojo de carreras brillante
-    ctx.fillStyle = "#dc2626";
+    ctx.fillStyle = "#dc2626"; // Rojo brillante
     ctx.fillRect(0, 0, 1024, 1024);
 
-    // Franjas aerodinámicas negras
+    // Franja aerodinámica negra
     ctx.fillStyle = "#09090b";
     ctx.beginPath();
-    ctx.moveTo(350, 0);
-    ctx.lineTo(674, 0);
-    ctx.lineTo(620, 1024);
-    ctx.lineTo(404, 1024);
+    ctx.moveTo(340, 0);
+    ctx.lineTo(684, 0);
+    ctx.lineTo(630, 1024);
+    ctx.lineTo(394, 1024);
     ctx.closePath();
     ctx.fill();
 
-    // Filetes decorativos blancos y dorados
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(340, 0, 10, 1024);
-    ctx.fillRect(674, 0, 10, 1024);
+    ctx.fillRect(332, 0, 8, 1024);
+    ctx.fillRect(684, 0, 8, 1024);
 
-    // Dorsal "#6" y logo WEC
+    // Dorsal y marca
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 90px sans-serif";
+    ctx.font = "bold 85px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("#6", 512, 380);
+    ctx.fillText("#6", 512, 360);
     ctx.font = "bold 45px sans-serif";
-    ctx.fillText("PORSCHE", 512, 450);
+    ctx.fillText("PORSCHE", 512, 440);
 
     return new THREE.CanvasTexture(c);
   })();
 
-  // 8. Gravilla de Escapatoria (Sand Trap)
+  // 7. Gravilla de Escapatoria
   textures.sand = (() => {
     const c = document.createElement("canvas");
     c.width = 512;
@@ -329,85 +292,108 @@ function generateAllTextures() {
     const d = imgData.data;
     for (let i = 0; i < d.length; i += 4) {
       const n = (Math.random() - 0.5) * 45;
-      d[i] += n;
-      d[i+1] += n;
-      d[i+2] += n;
+      d[i] += n; d[i+1] += n; d[i+2] += n;
     }
     ctx.putImageData(imgData, 0, 0);
     const tex = new THREE.CanvasTexture(c);
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(12, 12);
+    tex.repeat.set(10, 10);
     return tex;
   })();
+}
+
+// --- Generador de Environment Map PBR (Reflejos Realistas de Cielo y Horizonte) ---
+function setupEnvironmentMap() {
+  try {
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    pmremGenerator.compileEquirectangularShader();
+
+    const envCanvas = document.createElement("canvas");
+    envCanvas.width = 1024;
+    envCanvas.height = 512;
+    const ctx = envCanvas.getContext("2d");
+
+    // Cielo azul radiante a horizonte cálido y terreno verde
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, 512);
+    skyGrad.addColorStop(0.0, "#2563eb");
+    skyGrad.addColorStop(0.40, "#60a5fa");
+    skyGrad.addColorStop(0.49, "#e2e8f0");
+    skyGrad.addColorStop(0.51, "#1e3a1e");
+    skyGrad.addColorStop(0.70, "#142d14");
+    skyGrad.addColorStop(1.0, "#09090b");
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, 1024, 512);
+
+    // Disco solar
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(380, 160, 48, 0, Math.PI * 2);
+    ctx.fill();
+
+    const envTexture = new THREE.CanvasTexture(envCanvas);
+    envTexture.mapping = THREE.EquirectangularReflectionMapping;
+
+    const envMap = pmremGenerator.fromEquirectangular(envTexture).texture;
+    scene.environment = envMap;
+    scene.background = envTexture;
+  } catch (e) {
+    console.warn("Error generando PMREM envmap, usando cielo plano", e);
+  }
 }
 
 // --- Inicialización del Motor Gráfico Three.js ---
 function init() {
   const container = document.getElementById("gameCanvas");
 
-  // Escena con Niebla Realista
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x94c1e8);
-  scene.fog = new THREE.FogExp2(0x94c1e8, 0.0014);
+  scene.fog = new THREE.FogExp2(0x94c1e8, 0.0012);
 
-  // Cámara Principal con FOV Dinámico
-  camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.4, 2800);
+  camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.4, 3000);
 
-  // Renderer con Antialiasing y Mapeo de Tonos ACESFilmic
   renderer = new THREE.WebGLRenderer({ canvas: container, antialias: true, powerPreference: "high-performance" });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.15;
+  renderer.toneMappingExposure = 1.25;
 
-  // Retrovisor Superior Derecho
   const mirrorCanvas = document.getElementById("mirrorCanvas");
   mirrorRenderer = new THREE.WebGLRenderer({ canvas: mirrorCanvas, antialias: true });
   mirrorRenderer.setSize(mirrorCanvas.clientWidth, mirrorCanvas.clientHeight);
-  mirrorCamera = new THREE.PerspectiveCamera(62, mirrorCanvas.clientWidth / mirrorCanvas.clientHeight, 0.4, 450);
+  mirrorCamera = new THREE.PerspectiveCamera(62, mirrorCanvas.clientWidth / mirrorCanvas.clientHeight, 0.4, 500);
 
   clock = new THREE.Clock();
 
-  // Generar Texturas Procedurales
   generateAllTextures();
-
-  // Iluminación
+  setupEnvironmentMap();
   setupLighting();
 
-  // Trazado, Escapatorias y Entorno de Spa
   createSpaFrancorchampsTrack();
   createEnvironment();
 
-  // Coches Hypercar
   createPlayerCar();
   createOpponentCars();
 
-  // Efecto de Desenfoque Radial de Velocidad (Speed Blur Vignette)
   setupSpeedBlurEffect();
-
-  // Eventos
   setupEventListeners();
 
-  // Iniciar Bucle de Render
   animate();
 }
 
-// --- Iluminación Solar Realista ---
 function setupLighting() {
-  const hemiLight = new THREE.HemisphereLight(0xdbeafe, 0x3f3f46, 0.7);
+  const hemiLight = new THREE.HemisphereLight(0xdbeafe, 0x27272a, 0.85);
   scene.add(hemiLight);
 
-  const sunLight = new THREE.DirectionalLight(0xfffaea, 1.45);
+  const sunLight = new THREE.DirectionalLight(0xfffaea, 1.6);
   sunLight.position.set(280, 520, 180);
   sunLight.castShadow = true;
   sunLight.shadow.mapSize.width = 2048;
   sunLight.shadow.mapSize.height = 2048;
   sunLight.shadow.camera.near = 10;
-  sunLight.shadow.camera.far = 1300;
-  const d = 190;
+  sunLight.shadow.camera.far = 1400;
+  const d = 200;
   sunLight.shadow.camera.left = -d;
   sunLight.shadow.camera.right = d;
   sunLight.shadow.camera.top = d;
@@ -415,14 +401,14 @@ function setupLighting() {
   scene.add(sunLight);
 }
 
-// --- Trazado 3D de Spa-Francorchamps con Asfalto Texturizado y Pianos 3D ---
+// --- Trazado 3D de Spa-Francorchamps ---
 function createSpaFrancorchampsTrack() {
   const trackPoints = [
     new THREE.Vector3(0, 0, 0),
     new THREE.Vector3(0, 0, -120),
     new THREE.Vector3(15, 0, -220),
 
-    // La Source (Curva 1)
+    // La Source
     new THREE.Vector3(50, 0, -270),
     new THREE.Vector3(95, 0, -260),
     new THREE.Vector3(110, -5, -210),
@@ -433,14 +419,14 @@ function createSpaFrancorchampsTrack() {
     new THREE.Vector3(75, -25, 70),
     new THREE.Vector3(70, -28, 180),
 
-    // EAU ROUGE & RAIDILLON (Fuerte compresión y subida masiva a la colina)
+    // EAU ROUGE & RAIDILLON
     new THREE.Vector3(65, -24, 250),
     new THREE.Vector3(50, -5, 340),
     new THREE.Vector3(45, 18, 430),
     new THREE.Vector3(50, 36, 520),
     new THREE.Vector3(60, 42, 600),
 
-    // Recta de Kemmel
+    // Kemmel Straight
     new THREE.Vector3(80, 42, 750),
     new THREE.Vector3(110, 42, 920),
     new THREE.Vector3(150, 40, 1100),
@@ -451,12 +437,12 @@ function createSpaFrancorchampsTrack() {
     new THREE.Vector3(270, 30, 1270),
     new THREE.Vector3(300, 24, 1210),
 
-    // Bruxelles / Rivage
+    // Bruxelles
     new THREE.Vector3(320, 16, 1100),
     new THREE.Vector3(310, 8, 980),
     new THREE.Vector3(260, 0, 890),
 
-    // Pouhon (Doble ápice rápido)
+    // Pouhon
     new THREE.Vector3(200, -8, 800),
     new THREE.Vector3(140, -18, 720),
     new THREE.Vector3(80, -22, 640),
@@ -472,18 +458,18 @@ function createSpaFrancorchampsTrack() {
     new THREE.Vector3(-120, 0, -20),
     new THREE.Vector3(-90, 0, -90),
 
-    // Chicane Bus Stop
+    // Bus Stop
     new THREE.Vector3(-55, 0, -120),
     new THREE.Vector3(-30, 0, -100),
     new THREE.Vector3(-15, 0, -60)
   ];
 
-  trackCurve = new THREE.CatmullRomCurve3(trackPoints, true, 'centripetal', 0.4);
+  trackCurve = new THREE.CatmullRomCurve3(trackPoints, true, "centripetal", 0.4);
   trackLength = trackCurve.getLength();
 
-  const segments = 520;
-  const trackWidth = 14.5;
-  const curbWidth = 1.3;
+  const segments = 560;
+  const trackWidth = 14.8;
+  const curbWidth = 1.35;
 
   const roadGeom = new THREE.BufferGeometry();
   const curbLeftGeom = new THREE.BufferGeometry();
@@ -502,7 +488,6 @@ function createSpaFrancorchampsTrack() {
     const up = new THREE.Vector3(0, 1, 0);
     const normal = new THREE.Vector3().crossVectors(tangent, up).normalize();
 
-    // Vértices de asfalto
     const leftPt = pt.clone().add(normal.clone().multiplyScalar(-trackWidth / 2));
     const rightPt = pt.clone().add(normal.clone().multiplyScalar(trackWidth / 2));
 
@@ -511,25 +496,22 @@ function createSpaFrancorchampsTrack() {
     roadUvs.push(0, t);
     roadUvs.push(1, t);
 
-    // Pianos Izquierdos
     const curbLOut = leftPt.clone().add(normal.clone().multiplyScalar(-curbWidth));
-    curbLOut.y += 0.08;
+    curbLOut.y += 0.09;
     curbLVerts.push(curbLOut.x, curbLOut.y, curbLOut.z);
     curbLVerts.push(leftPt.x, leftPt.y + 0.02, leftPt.z);
     curbLUvs.push(0, t);
     curbLUvs.push(1, t);
 
-    // Pianos Derechos
     const curbROut = rightPt.clone().add(normal.clone().multiplyScalar(curbWidth));
-    curbROut.y += 0.08;
+    curbROut.y += 0.09;
     curbRVerts.push(rightPt.x, rightPt.y + 0.02, rightPt.z);
     curbRVerts.push(curbROut.x, curbROut.y, curbROut.z);
     curbRUvs.push(0, t);
     curbRUvs.push(1, t);
 
-    // Muros de Hormigón con Patrocinadores en el lateral derecho
-    const wallBase = rightPt.clone().add(normal.clone().multiplyScalar(2.8));
-    const wallTop = wallBase.clone().add(new THREE.Vector3(0, 1.4, 0));
+    const wallBase = rightPt.clone().add(normal.clone().multiplyScalar(2.9));
+    const wallTop = wallBase.clone().add(new THREE.Vector3(0, 1.45, 0));
     wallVerts.push(wallBase.x, wallBase.y, wallBase.z);
     wallVerts.push(wallTop.x, wallTop.y, wallTop.z);
     wallUvs.push(t, 0);
@@ -551,25 +533,22 @@ function createSpaFrancorchampsTrack() {
     }
   }
 
-  // 1. Malla de Asfalto con Trazada Engomada
   roadGeom.setAttribute("position", new THREE.Float32BufferAttribute(roadVerts, 3));
   roadGeom.setAttribute("uv", new THREE.Float32BufferAttribute(roadUvs, 2));
   roadGeom.setIndex(roadIndices);
   roadGeom.computeVertexNormals();
 
-  const roadMat = new THREE.MeshStandardMaterial({
+  trackMesh = new THREE.Mesh(roadGeom, new THREE.MeshStandardMaterial({
     map: textures.asphalt,
-    roughness: 0.78,
-    metalness: 0.12
-  });
-  trackMesh = new THREE.Mesh(roadGeom, roadMat);
+    roughness: 0.72,
+    metalness: 0.18
+  }));
   trackMesh.receiveShadow = true;
   scene.add(trackMesh);
 
-  // 2. Mallas de Pianos con Textura
   const curbMat = new THREE.MeshStandardMaterial({
     map: textures.curb,
-    roughness: 0.55,
+    roughness: 0.52,
     metalness: 0.15
   });
 
@@ -589,78 +568,64 @@ function createSpaFrancorchampsTrack() {
   curbRMesh.receiveShadow = true;
   scene.add(curbRMesh);
 
-  // 3. Muro de Hormigón con Patrocinadores WEC
   wallGeom.setAttribute("position", new THREE.Float32BufferAttribute(wallVerts, 3));
   wallGeom.setAttribute("uv", new THREE.Float32BufferAttribute(wallUvs, 2));
   wallGeom.setIndex(wallIndices);
   wallGeom.computeVertexNormals();
 
-  const wallMat = new THREE.MeshStandardMaterial({
+  const wallMesh = new THREE.Mesh(wallGeom, new THREE.MeshStandardMaterial({
     map: textures.wall,
-    roughness: 0.65,
-    metalness: 0.1
-  });
-  const wallMesh = new THREE.Mesh(wallGeom, wallMat);
+    roughness: 0.60,
+    metalness: 0.12
+  }));
   wallMesh.castShadow = true;
   wallMesh.receiveShadow = true;
   scene.add(wallMesh);
 }
 
-// --- Entorno: Colinas, Escapatorias de Arena, Árboles y Tribunas ---
+// --- Entorno: Colinas, Árboles, Tribunas y Torre Roja ---
 function createEnvironment() {
-  // Suelo con Césped Verde
-  const groundGeo = new THREE.PlaneGeometry(3800, 3800, 40, 40);
+  const groundGeo = new THREE.PlaneGeometry(3800, 3800, 30, 30);
   groundGeo.rotateX(-Math.PI / 2);
-  const groundMat = new THREE.MeshStandardMaterial({
-    color: 0x1f4722, // Verde bosque natural
-    roughness: 0.92
-  });
-  const ground = new THREE.Mesh(groundGeo, groundMat);
+  const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({
+    color: 0x1f4722,
+    roughness: 0.95
+  }));
   ground.position.y = -35;
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // Escapatoria de Arena / Gravilla en la Cima de Raidillon
-  const sandGeo = new THREE.PlaneGeometry(80, 180);
+  // Escapatoria de Arena en la cima de Raidillon
+  const sandGeo = new THREE.PlaneGeometry(85, 190);
   sandGeo.rotateX(-Math.PI / 2);
-  const sandMat = new THREE.MeshStandardMaterial({
+  const sandMesh = new THREE.Mesh(sandGeo, new THREE.MeshStandardMaterial({
     map: textures.sand,
-    roughness: 0.9
-  });
-  const sandMesh = new THREE.Mesh(sandGeo, sandMat);
+    roughness: 0.88
+  }));
   sandMesh.position.set(90, 41.8, 560);
   sandMesh.rotation.y = -0.25;
   sandMesh.receiveShadow = true;
   scene.add(sandMesh);
 
-  // Tribunas Detalladas con Techo Verde (como en la foto)
+  // Tribunas Detalladas con Techo
   createDetailedGrandstand(new THREE.Vector3(-25, 8, -50), 0.1, 140, 18);
   createDetailedGrandstand(new THREE.Vector3(15, 25, 450), -0.38, 95, 22);
 
-  // Torre de Control Roja Icónica de Comisarios
+  // Torre de Comisarios Roja
   createMarshalTower(new THREE.Vector3(45, 0, -210));
   createMarshalTower(new THREE.Vector3(88, 46, 560));
 
-  // Pinos con Ramas en las Colinas
   createPineTrees();
 }
 
-// Tribuna con Asientos Graduados
 function createDetailedGrandstand(pos, rotY, length, height) {
   const group = new THREE.Group();
-
-  // Graderío con escalones
-  const stepsGeo = new THREE.BoxGeometry(16, height, length);
-  const stepsMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 });
-  const steps = new THREE.Mesh(stepsGeo, stepsMat);
+  const steps = new THREE.Mesh(new THREE.BoxGeometry(16, height, length), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }));
   steps.castShadow = true;
   steps.receiveShadow = true;
   group.add(steps);
 
-  // Techo verde WEC con vigas
-  const roofGeo = new THREE.BoxGeometry(22, 1.4, length + 4);
-  const roofMat = new THREE.MeshStandardMaterial({ color: 0x047857, roughness: 0.5 });
-  const roof = new THREE.Mesh(roofGeo, roofMat);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(22, 1.4, length + 4), new THREE.MeshStandardMaterial({ color: 0x047857, roughness: 0.5 }));
   roof.position.set(-2, height / 2 + 5, 0);
   roof.rotation.z = -0.14;
   roof.castShadow = true;
@@ -671,21 +636,14 @@ function createDetailedGrandstand(pos, rotY, length, height) {
   scene.add(group);
 }
 
-// Torre Roja de Comisarios con Ventanas
 function createMarshalTower(pos) {
   const tower = new THREE.Group();
-
-  const baseGeo = new THREE.BoxGeometry(7, 18, 7);
-  const baseMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.4 }); // Rojo
-  const base = new THREE.Mesh(baseGeo, baseMat);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(7, 18, 7), new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.35 }));
   base.position.y = 9;
   base.castShadow = true;
   tower.add(base);
 
-  // Cabina de observación con cristal oscuro
-  const cabGeo = new THREE.BoxGeometry(7.6, 5.5, 7.6);
-  const cabMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.2 });
-  const cab = new THREE.Mesh(cabGeo, cabMat);
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(7.6, 5.5, 7.6), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.15 }));
   cab.position.y = 19.5;
   tower.add(cab);
 
@@ -693,7 +651,6 @@ function createMarshalTower(pos) {
   scene.add(tower);
 }
 
-// Árboles Frondosos en las Colinas
 function createPineTrees() {
   const treeGeo = new THREE.ConeGeometry(5, 16, 6);
   const treeMat = new THREE.MeshStandardMaterial({ color: 0x14532d, roughness: 0.88 });
@@ -728,155 +685,129 @@ function createPineTrees() {
   }
 }
 
-// --- CONSTRUCCIÓN DEL COCHE HYPERCAR CON MÁXIMO DETALLE DE TEXTURAS ---
+// --- CONSTRUCCIÓN DEL HYPERCAR DE ALTA FIDELIDAD CON REFLEJOS PBR ---
 function buildHypercarModel(primaryColor = 0xdc2626, isPlayer = false) {
   const car = new THREE.Group();
 
-  // Material de Carrocería con Livery Texturizada
+  // Carrocería con Livery y Reflejos de Entorno
   const bodyMat = new THREE.MeshStandardMaterial({
     color: primaryColor,
     map: isPlayer ? textures.carLivery : null,
-    roughness: 0.18,
-    metalness: 0.72
+    roughness: 0.14,
+    metalness: 0.78
   });
 
-  // Fibra de Carbono Realista
   const carbonMat = new THREE.MeshStandardMaterial({
     map: textures.carbon,
-    roughness: 0.35,
-    metalness: 0.82
+    roughness: 0.28,
+    metalness: 0.85
   });
 
-  // Cristal de Cabina Reflectante
   const glassMat = new THREE.MeshStandardMaterial({
     color: 0x020617,
-    roughness: 0.05,
-    metalness: 0.95,
+    roughness: 0.04,
+    metalness: 0.98,
     transparent: true,
     opacity: 0.88
   });
 
-  // 1. Chasis Principal
-  const chassisGeo = new THREE.BoxGeometry(2.12, 0.44, 4.85);
+  // Chasis y Morro Aerodinámico
+  const chassisGeo = new THREE.BoxGeometry(2.14, 0.44, 4.88);
   const chassis = new THREE.Mesh(chassisGeo, bodyMat);
   chassis.position.y = 0.40;
   chassis.castShadow = true;
   car.add(chassis);
 
-  // 2. Pontones Laterales y Paso de Ruedas
-  const sidepodGeo = new THREE.BoxGeometry(2.28, 0.40, 2.85);
+  // Pontones Laterales y Paso de Ruedas
+  const sidepodGeo = new THREE.BoxGeometry(2.32, 0.42, 2.88);
   const sidepod = new THREE.Mesh(sidepodGeo, bodyMat);
   sidepod.position.set(0, 0.40, -0.2);
   sidepod.castShadow = true;
   car.add(sidepod);
 
-  // 3. Cabina Burbuja Central (LMP Cockpit)
-  const cockpitGeo = new THREE.SphereGeometry(0.70, 20, 20);
-  cockpitGeo.scale(1.0, 0.86, 2.25);
+  // Cabina Burbuja Central (LMP Cockpit con Reflejo Especular)
+  const cockpitGeo = new THREE.SphereGeometry(0.72, 24, 24);
+  cockpitGeo.scale(1.0, 0.88, 2.28);
   const cockpit = new THREE.Mesh(cockpitGeo, glassMat);
-  cockpit.position.set(0, 0.80, -0.3);
+  cockpit.position.set(0, 0.82, -0.3);
   cockpit.castShadow = true;
   car.add(cockpit);
 
-  // 4. Aleta de Tiburón Dorsal de Fibra de Carbono
-  const finGeo = new THREE.BoxGeometry(0.06, 0.65, 2.35);
+  // Aleta de Tiburón Dorsal
+  const finGeo = new THREE.BoxGeometry(0.06, 0.68, 2.38);
   const fin = new THREE.Mesh(finGeo, carbonMat);
-  fin.position.set(0, 0.92, 0.78);
+  fin.position.set(0, 0.94, 0.80);
   fin.castShadow = true;
   car.add(fin);
 
-  // 5. Alerón Trasero de Fibra de Carbono con Soportes Cuello de Cisne
-  const wingGeo = new THREE.BoxGeometry(2.32, 0.08, 0.48);
+  // Alerón Trasero con Soportes Swan-Neck
+  const wingGeo = new THREE.BoxGeometry(2.36, 0.08, 0.50);
   const wing = new THREE.Mesh(wingGeo, carbonMat);
-  wing.position.set(0, 1.20, 2.18);
+  wing.position.set(0, 1.22, 2.20);
   wing.castShadow = true;
   car.add(wing);
 
-  // Placas laterales del alerón (Endplates)
-  const endplateGeo = new THREE.BoxGeometry(0.06, 0.52, 0.65);
+  const endplateGeo = new THREE.BoxGeometry(0.06, 0.54, 0.68);
   const leftEndplate = new THREE.Mesh(endplateGeo, carbonMat);
-  leftEndplate.position.set(-1.16, 1.08, 2.18);
+  leftEndplate.position.set(-1.18, 1.10, 2.20);
   const rightEndplate = leftEndplate.clone();
-  rightEndplate.position.x = 1.16;
+  rightEndplate.position.x = 1.18;
   car.add(leftEndplate);
   car.add(rightEndplate);
 
-  // 6. Splitter Delantero y Difusor Trasero en Carbono
-  const splitterGeo = new THREE.BoxGeometry(2.25, 0.08, 0.95);
-  const splitter = new THREE.Mesh(splitterGeo, carbonMat);
-  splitter.position.set(0, 0.18, -2.45);
+  // Splitter y Difusor
+  const splitter = new THREE.Mesh(new THREE.BoxGeometry(2.28, 0.08, 0.98), carbonMat);
+  splitter.position.set(0, 0.18, -2.48);
   car.add(splitter);
 
-  const diffuserGeo = new THREE.BoxGeometry(2.15, 0.16, 0.75);
-  const diffuser = new THREE.Mesh(diffuserGeo, carbonMat);
-  diffuser.position.set(0, 0.22, 2.38);
+  const diffuser = new THREE.Mesh(new THREE.BoxGeometry(2.18, 0.18, 0.78), carbonMat);
+  diffuser.position.set(0, 0.22, 2.40);
   car.add(diffuser);
 
-  // 7. Tubos de Escape Dobles con Chapa Anticalórica (Heatshield)
-  const exhaustMat = new THREE.MeshStandardMaterial({
-    map: textures.heatshield,
-    metalness: 0.9,
-    roughness: 0.25
-  });
-  const exhaustGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.4, 16);
+  // Escapes Dobles
+  const exhaustMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.95, roughness: 0.15 });
+  const exhaustGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.42, 16);
   exhaustGeo.rotateX(Math.PI / 2);
-
   const leftExhaust = new THREE.Mesh(exhaustGeo, exhaustMat);
-  leftExhaust.position.set(-0.25, 0.52, 2.44);
+  leftExhaust.position.set(-0.25, 0.52, 2.46);
   const rightExhaust = leftExhaust.clone();
   rightExhaust.position.x = 0.25;
   car.add(leftExhaust);
   car.add(rightExhaust);
 
-  // 8. Tira LED Trasera Brillante
+  // Luz de Freno Trasera LED
   const brakeLightMat = new THREE.MeshBasicMaterial({ color: 0xdc2626 });
-  const rearLight = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.08, 0.08), brakeLightMat);
-  rearLight.position.set(0, 0.56, 2.45);
+  const rearLight = new THREE.Mesh(new THREE.BoxGeometry(1.88, 0.08, 0.08), brakeLightMat);
+  rearLight.position.set(0, 0.56, 2.46);
   car.add(rearLight);
   car.rearLightMesh = rearLight;
 
-  // 9. Ruedas de Competición con Textura Michelin y Pinzas de Freno Rojas
-  const wheelMat = new THREE.MeshStandardMaterial({
-    map: textures.tire,
-    roughness: 0.75
-  });
-
-  const brakeDiscMat = new THREE.MeshStandardMaterial({
-    color: 0x94a3b8,
-    metalness: 0.95,
-    roughness: 0.18
-  });
-
-  const caliperMat = new THREE.MeshStandardMaterial({
-    color: 0xef4444, // Rojo Brembo
-    roughness: 0.3
-  });
+  // 4 Ruedas con Michelin y Pinzas Rojas
+  const wheelMat = new THREE.MeshStandardMaterial({ map: textures.tire, roughness: 0.7 });
+  const discMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.95, roughness: 0.15 });
+  const caliperMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.25 });
 
   const wheelGeo = new THREE.CylinderGeometry(0.44, 0.44, 0.38, 20);
   wheelGeo.rotateZ(Math.PI / 2);
 
   const wheels = [];
   const wheelPositions = [
-    [-1.08, 0.44, -1.55], // FL
-    [1.08, 0.44, -1.55],  // FR
-    [-1.08, 0.44, 1.55],  // RL
-    [1.08, 0.44, 1.55]    // RR
+    [-1.08, 0.44, -1.55],
+    [1.08, 0.44, -1.55],
+    [-1.08, 0.44, 1.55],
+    [1.08, 0.44, 1.55]
   ];
 
   wheelPositions.forEach(pos => {
     const wheelGroup = new THREE.Group();
-
-    // Neumático con textura Michelin
     const tire = new THREE.Mesh(wheelGeo, wheelMat);
     tire.castShadow = true;
     wheelGroup.add(tire);
 
-    // Disco de freno ventilado
-    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.08, 16), brakeDiscMat);
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.08, 16), discMat);
     disc.rotation.z = Math.PI / 2;
     wheelGroup.add(disc);
 
-    // Pinza de freno roja
     const caliper = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 0.22), caliperMat);
     caliper.position.set(pos[0] > 0 ? -0.1 : 0.1, 0.15, 0);
     wheelGroup.add(caliper);
@@ -887,10 +818,21 @@ function buildHypercarModel(primaryColor = 0xdc2626, isPlayer = false) {
   });
   car.wheels = wheels;
 
-  // Llama de Escape para Backfire
-  const flameGeo = new THREE.SphereGeometry(0.14, 8, 8);
+  // Sombra de Contacto bajo el Coche
+  const shadowGeo = new THREE.PlaneGeometry(2.6, 5.2);
+  shadowGeo.rotateX(-Math.PI / 2);
+  const shadowMat = new THREE.MeshBasicMaterial({
+    color: 0x000000,
+    transparent: true,
+    opacity: 0.45
+  });
+  const contactShadow = new THREE.Mesh(shadowGeo, shadowMat);
+  contactShadow.position.y = 0.05;
+  car.add(contactShadow);
+
+  // Llama de Escape (Backfire)
   const flameMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.0 });
-  const flame = new THREE.Mesh(flameGeo, flameMat);
+  const flame = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), flameMat);
   flame.position.set(0.25, 0.52, 2.5);
   car.add(flame);
   car.flame = flame;
@@ -906,7 +848,7 @@ function createPlayerCar() {
 }
 
 function createOpponentCars() {
-  WEC_TEAMS.forEach((data, index) => {
+  WEC_TEAMS.forEach((data) => {
     const oppMesh = buildHypercarModel(data.color, false);
     scene.add(oppMesh);
 
@@ -915,9 +857,9 @@ function createOpponentCars() {
       name: data.name,
       team: data.team,
       num: data.num,
-      posDistance: (0.035 + index * 0.038) % 1.0,
-      lateralOffset: (index % 2 === 0 ? -1.8 : 1.8) + (Math.random() * 0.7 - 0.35),
-      speed: 68 + Math.random() * 16,
+      posDistance: data.offsetT,
+      lateralOffset: data.lat,
+      speed: 68 + Math.random() * 14,
       maxSpeed: 78 + Math.random() * 12,
       fuel: Math.floor(75 + Math.random() * 20),
       reliability: Math.floor(92 + Math.random() * 8)
@@ -941,12 +883,12 @@ function updateCarTransform(mesh, tDistance, latOffset) {
   mesh.lookAt(lookTarget);
 
   if (mesh.wheels) {
-    const wheelRot = clock.getElapsedTime() * 26;
+    const wheelRot = clock.getElapsedTime() * 28;
     mesh.wheels.forEach(w => w.rotation.x = wheelRot);
   }
 }
 
-// --- Físicas del Coche del Jugador ---
+// --- Físicas del Coche ---
 function updatePhysics(dt) {
   if (keys.forward) {
     const boostMult = keys.boost ? 1.4 : 1.0;
@@ -1066,19 +1008,17 @@ function updateCameras() {
   const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(playerCar.quaternion).normalize();
   const up = new THREE.Vector3(0, 1, 0);
 
-  // Cámara Persecución (Chase Cam idéntica a la foto)
+  // Cámara Persecución (Chase Cam exacta como en la foto)
   if (carState.cameraMode === 0) {
-    const camOffset = forward.clone().multiplyScalar(-8.2).add(up.clone().multiplyScalar(3.2));
+    const camOffset = forward.clone().multiplyScalar(-8.4).add(up.clone().multiplyScalar(3.3));
     const targetPos = carPos.clone().add(camOffset);
-    camera.position.lerp(targetPos, 0.22);
-    camera.lookAt(carPos.clone().add(up.clone().multiplyScalar(1.2)));
+    camera.position.lerp(targetPos, 0.24);
+    camera.lookAt(carPos.clone().add(up.clone().multiplyScalar(1.25)));
   } else if (carState.cameraMode === 1) {
-    // Capó (Hood Cam)
     const hoodOffset = forward.clone().multiplyScalar(0.4).add(up.clone().multiplyScalar(1.1));
     camera.position.copy(carPos.clone().add(hoodOffset));
     camera.lookAt(carPos.clone().add(forward.clone().multiplyScalar(30)));
   } else {
-    // Cockpit
     const cockOffset = forward.clone().multiplyScalar(-0.3).add(up.clone().multiplyScalar(0.85));
     camera.position.copy(carPos.clone().add(cockOffset));
     camera.lookAt(carPos.clone().add(forward.clone().multiplyScalar(30)));
@@ -1091,7 +1031,7 @@ function updateCameras() {
   mirrorCamera.lookAt(lookBack);
 }
 
-// --- Efecto de Desenfoque de Movimiento Radial Periférico (Speed Blur) ---
+// --- Desenfoque Radial de Velocidad ---
 let speedBlurOverlay = null;
 
 function setupSpeedBlurEffect() {
@@ -1103,9 +1043,8 @@ function setupSpeedBlurEffect() {
   speedBlurOverlay.style.height = "100%";
   speedBlurOverlay.style.pointerEvents = "none";
   speedBlurOverlay.style.zIndex = "5";
-  speedBlurOverlay.style.boxShadow = "inset 0 0 120px rgba(255, 255, 255, 0)";
   speedBlurOverlay.style.transition = "opacity 0.1s ease";
-  speedBlurOverlay.style.background = "radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(255,255,255,0.15) 100%)";
+  speedBlurOverlay.style.background = "radial-gradient(ellipse at center, rgba(0,0,0,0) 62%, rgba(255,255,255,0.2) 100%)";
   speedBlurOverlay.style.opacity = "0";
   document.body.appendChild(speedBlurOverlay);
 }
@@ -1115,7 +1054,7 @@ function updateSpeedBlur() {
   const speedKmh = carState.speed * 3.6;
   if (speedKmh > 160) {
     const intensity = Math.min(1.0, (speedKmh - 160) / 120);
-    speedBlurOverlay.style.opacity = (intensity * 0.75).toString();
+    speedBlurOverlay.style.opacity = (intensity * 0.8).toString();
   } else {
     speedBlurOverlay.style.opacity = "0";
   }
@@ -1169,7 +1108,7 @@ function updateAudio() {
   turboOsc.frequency.setTargetAtTime(800 + (carState.speed * 20), audioCtx.currentTime, 0.1);
 }
 
-// --- Actualización del HUD Telemétrico ---
+// --- Actualización de la Interfaz HUD ---
 let lastFpsUpdate = 0;
 let frameCount = 0;
 
@@ -1280,7 +1219,7 @@ function updateLeaderboard() {
 
   const allDrivers = [
     { num: 6, team: "POR", name: "TÚ (PORSCHE #6)", dist: carState.posDistance, isPlayer: true, fuel: Math.round(carState.fuel) },
-    ...opponents.map(o => ({ num: o.num, team: o.team, name: `#${o.num} ${o.team}`, dist: o.posDistance, isPlayer: false, fuel: o.fuel }))
+    ...opponents.map(o => ({ num: o.num, team: o.team, name: o.name, dist: o.posDistance, isPlayer: false, fuel: o.fuel }))
   ];
 
   allDrivers.sort((a, b) => b.dist - a.dist);
@@ -1402,7 +1341,6 @@ function setupEventListeners() {
   });
 }
 
-// --- Bucle de Animación a 60 FPS ---
 function animate() {
   requestAnimationFrame(animate);
 
